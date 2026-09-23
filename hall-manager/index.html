@@ -1,0 +1,2206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Hostel Management · Hall Manager · IIT Bombay</title>
+  <!-- @fonts:start -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,500;9..40,700&family=Roboto:wght@400;500;600;700&display=swap">
+  <!-- @fonts:end -->
+  <style>
+/* ==========================================================================
+   Design tokens — extracted from Figma "HM Intern Work" (W8pJfHJeop1TZinVuB2IP1),
+   section "Hostel Manager" (238:3312). Variable names mirror the Figma variables.
+   If you change a value here, change it in Figma too (or vice versa).
+   ========================================================================== */
+:root {
+  /* Surfaces */
+  --primary-bg: #f5f9f8;        /* panels, map floor, cards-in-cards */
+  --secondary-bg: #ffffff;      /* page + cards */
+  --white: #ffffff;
+
+  /* Brand */
+  --primary-cta-bg: #019487;    /* active nav pill, primary button, links */
+  --primary-cta-hover: #017d72;
+  --colored-subheading: #57b8ab;/* "Hostel Management" wordmark */
+  --badge-type1: #b8eae2;       /* Day / Month / Year pills */
+  --badge-1: #103d37;           /* text on badge-type1 */
+
+  /* Text */
+  --heading: #000000;
+  --body: #1e1f24;
+  --body-2: #80828d;            /* labels ("Total Rooms") */
+  --unselected-text: #80828d;
+  --grey-subheading: #36363c;
+  --nav-text: #1f1f1f;          /* Figma var "500" */
+
+  /* Strokes */
+  --secondary-cta-border: #b9bbc6; /* card + table outlines, secondary button */
+  --light-stroke: #e0e1e6;         /* nav pills, dividers */
+
+  /* Hostel map room states (Bookings 1 · 238:5393) */
+  --room-empty-bg: #f5f9f8;     --room-empty-stroke: #019487;
+  --room-allotted-bg: #8eddd6;  --room-allotted-stroke: #00b1a1;
+  --room-guest-bg: #ffffff;     --room-guest-stroke: #57b8ab;   /* legend "Guests" */
+  --room-maint-bg: #ffab9a;     --room-maint-stroke: #ff8787;
+  --room-common-bg: #d0ede6;    /* stairs / pantry / washroom blocks */
+  --room-service-bg: #cecece;   /* service / lift block */
+
+  /* Feedback (not in Figma yet — added for states the designs don't cover) */
+  --danger: #c2410c;
+  --danger-bg: #fff1ec;
+  --warning-bg: #fff7e0;
+  --warning: #8a5a00;
+  --info: #2563eb;              /* "Occupied" status badge in profile (293:10380) */
+  --info-bg: #eef4ff;
+
+  /* Type
+     Figma uses Satoshi (UI) + Roboto (numbers/table data, M3 "display-medium").
+     Satoshi is served by Fontshare; DM Sans is the fallback when it can't load. */
+  --font-ui: "Satoshi", "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "Roboto", ui-sans-serif, system-ui, sans-serif;
+  --tracking: -0.3px;
+
+  --fs-display: 45px;   /* stat numbers (M3 display-medium) */
+  --fs-stat-sm: 24px;   /* secondary stats */
+  --fs-h1: 24px;        /* page titles "Residents", "Requests" */
+  --fs-h2: 20px;        /* "Hostel 17," */
+  --fs-h3: 16px;        /* H3/M, H3/B — nav, panel titles */
+  --fs-body1: 12px;     /* Body1/M */
+  --fs-body2: 10px;     /* Body2/M — meta lines */
+  --fs-micro: 8px;      /* "Details" links */
+
+  /* Shape */
+  --r-card: 12px;
+  --r-pill: 24px;
+  --r-btn: 6px;
+  --r-room: 4.8px;
+
+  /* Layout */
+  --sidebar-w: 189px;
+  --gutter: 32px;
+  --shadow-card: 0 2px 10px rgba(16, 61, 55, 0.08);
+  --shadow-pop: 0 12px 40px rgba(16, 61, 55, 0.16);
+}
+
+</style>
+  <style>
+/* ==========================================================================
+   Base
+   ========================================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: var(--tracking);
+  color: var(--body);
+  background: var(--secondary-bg);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select, textarea { font: inherit; letter-spacing: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--primary-cta-bg); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.num { font-family: var(--font-data); letter-spacing: 0; }
+.muted { color: var(--body-2); }
+.link { color: var(--primary-cta-bg); background: none; border: 0; padding: 0; font-size: inherit; }
+.link:hover { text-decoration: underline; }
+svg.ic { width: 1em; height: 1em; flex: none; }
+
+/* ==========================================================================
+   Shell — header + pill sidebar (Dashboard 238:3313)
+   ========================================================================== */
+.shell { display: grid; grid-template-columns: calc(var(--sidebar-w) + var(--gutter) * 2) 1fr; grid-template-rows: auto 1fr; min-height: 100vh; }
+.topbar { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; padding: 26px 56px 18px 38px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+.brand-mark { width: 40px; height: 40px; color: #202f5f; }
+.brand-name { font-weight: 700; font-size: 14.4px; color: var(--colored-subheading); line-height: 1.2; }
+.brand-sub { font-size: 9.6px; color: var(--heading); line-height: 1.2; }
+.topbar-actions { display: flex; align-items: center; gap: 18px; position: relative; }
+.icon-btn { width: 36px; height: 36px; display: grid; place-items: center; border: 0; background: none; border-radius: 50%; font-size: 20px; color: var(--body); position: relative; }
+.icon-btn:hover { background: var(--primary-bg); }
+.icon-btn .dot { position: absolute; top: 6px; right: 7px; width: 8px; height: 8px; border-radius: 50%; background: var(--primary-cta-bg); border: 2px solid #fff; }
+.avatar { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--light-stroke); display: grid; place-items: center; font-size: 16px; background: #fff; }
+
+.sidebar { padding: 22px var(--gutter) 32px; display: flex; flex-direction: column; justify-content: space-between; position: sticky; top: 0; height: calc(100vh - 96px); }
+.nav { display: flex; flex-direction: column; gap: 13px; }
+.nav a {
+  display: grid; place-items: center; height: 36px; border-radius: var(--r-pill);
+  border: 1px solid var(--light-stroke); background: var(--secondary-bg);
+  color: var(--nav-text); text-decoration: none; font-size: var(--fs-h3);
+}
+.nav a:hover { border-color: var(--secondary-cta-border); }
+.nav a[aria-current="page"] { background: var(--primary-cta-bg); border-color: var(--primary-cta-bg); color: #fff; }
+.nav-settings { display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--unselected-text); text-decoration: none; font-size: var(--fs-h3); }
+.nav-settings svg { font-size: 23px; }
+.nav-settings[aria-current="page"] { color: var(--primary-cta-bg); }
+
+.main { padding: 8px 56px 64px 0; min-width: 0; }
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; min-height: 36px; }
+.page-title { font-family: var(--font-data); font-weight: 500; font-size: var(--fs-h1); letter-spacing: 0; margin: 0; }
+.page-title .sep { color: var(--body-2); margin: 0 6px; }
+.back { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 0; color: var(--body-2); font-size: var(--fs-body1); margin-bottom: 10px; }
+.back:hover { color: var(--body); }
+
+/* ==========================================================================
+   Primitives
+   ========================================================================== */
+.card { background: var(--secondary-bg); border: 1px solid var(--secondary-cta-border); border-radius: var(--r-card); }
+.panel { background: var(--primary-bg); border: 2px solid var(--light-stroke); border-radius: var(--r-card); }
+.panel-head { display: flex; align-items: center; gap: 14px; padding: 18px 28px 16px; }
+.panel-head h2 { font-size: var(--fs-h3); font-weight: 700; color: var(--grey-subheading); margin: 0; flex: 1; }
+.panel-icon { width: 32px; height: 32px; border-radius: 50%; background: var(--primary-cta-bg); color: #fff; display: grid; place-items: center; font-size: 17px; }
+.panel-tools { display: flex; gap: 6px; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 28px; padding: 0 14px; border-radius: var(--r-btn); font-size: var(--fs-body1); border: 1px solid transparent; white-space: nowrap; }
+.btn-primary { background: var(--primary-cta-bg); color: #fff; }
+.btn-primary:hover { background: var(--primary-cta-hover); }
+.btn-secondary { background: #f9f9fb; border-color: var(--secondary-cta-border); color: var(--body-2); }
+.btn-secondary:hover { color: var(--body); border-color: var(--body-2); }
+.btn-danger { background: var(--danger-bg); border-color: #f5c4b3; color: var(--danger); }
+.btn-lg { height: 36px; padding: 0 18px; font-size: 13px; }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+.btn-outline-pill { height: 36px; border-radius: var(--r-pill); border: 1px solid var(--secondary-cta-border); background: #fff; color: var(--body); padding: 0 20px; font-size: 13px; }
+.btn-outline-pill:hover { border-color: var(--primary-cta-bg); color: var(--primary-cta-bg); }
+
+.pill-select { position: relative; display: inline-flex; align-items: center; height: 28px; border-radius: var(--r-pill); background: var(--badge-type1); color: var(--badge-1); font-size: var(--fs-body1); }
+.pill-select select { appearance: none; border: 0; background: transparent; padding: 0 28px 0 16px; height: 100%; border-radius: inherit; cursor: pointer; }
+.pill-select svg { position: absolute; right: 11px; font-size: 10px; pointer-events: none; }
+
+.box-select { position: relative; display: inline-flex; align-items: center; }
+.box-select select { appearance: none; height: 44px; padding: 0 44px 0 16px; border-radius: 8px; border: 0; background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.14); font-family: var(--font-data); font-size: 18px; letter-spacing: 0; color: var(--grey-subheading); cursor: pointer; }
+.box-select svg { position: absolute; right: 14px; font-size: 16px; pointer-events: none; color: var(--grey-subheading); }
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > span { font-size: var(--fs-body2); color: var(--body-2); }
+.input, .select-input, textarea.input {
+  height: 32px; border-radius: 8px; border: 1px solid var(--secondary-cta-border); background: #f9f9fb; padding: 0 12px; font-size: var(--fs-body1);
+}
+textarea.input { height: auto; padding: 8px 12px; resize: vertical; min-height: 64px; }
+.input:focus, .select-input:focus { outline: none; border-color: var(--primary-cta-bg); background: #fff; }
+.search { position: relative; display: flex; align-items: center; }
+.search svg { position: absolute; left: 11px; font-size: 14px; color: var(--body-2); }
+.search .input { padding-left: 32px; width: 188px; }
+
+.tabs { display: flex; border-bottom: 1px solid var(--light-stroke); gap: 0; margin-bottom: 14px; }
+.tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 26px 11px; font-family: var(--font-data); letter-spacing: 0; font-size: 12px; color: var(--grey-subheading); margin-bottom: -1px; }
+.tab[aria-selected="true"] { border-bottom-color: var(--body); color: var(--body); font-weight: 600; }
+.tab-add { padding-inline: 16px; }
+.tab .tab-x { margin-left: 6px; color: var(--body-2); font-size: 10px; }
+
+.badge { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: var(--r-pill); font-size: var(--fs-body2); border: 1px solid; }
+.badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.badge-info { color: var(--info); border-color: var(--info); background: var(--info-bg); }
+.badge-teal { color: var(--primary-cta-bg); border-color: var(--primary-cta-bg); background: #eaf7f4; }
+.badge-warn { color: var(--warning); border-color: #e7c36a; background: var(--warning-bg); }
+.badge-grey { color: var(--body-2); border-color: var(--secondary-cta-border); background: #f9f9fb; }
+.badge-danger { color: var(--danger); border-color: #f5b9a3; background: var(--danger-bg); }
+
+.kv { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.kv dt { font-size: var(--fs-body2); color: var(--body-2); font-family: var(--font-data); letter-spacing: .1px; }
+.kv dd { margin: 0; font-family: var(--font-data); letter-spacing: 0; font-weight: 500; font-size: 13px; color: var(--body); }
+
+.checkbox { appearance: none; width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--secondary-cta-border); background: #fff; display: inline-grid; place-items: center; cursor: pointer; margin: 0; }
+.checkbox:checked { border-color: var(--secondary-cta-border); }
+.checkbox:checked::after { content: ""; width: 10px; height: 10px; border-radius: 2px; background: var(--primary-cta-bg); }
+
+.empty { padding: 40px 20px; text-align: center; color: var(--body-2); font-size: 13px; }
+.empty strong { display: block; color: var(--body); font-size: 14px; margin-bottom: 4px; }
+
+/* ==========================================================================
+   Overlays — popover, modal, drawer, toast
+   ========================================================================== */
+.popover { position: absolute; z-index: 40; background: #fff; border: 1px solid var(--light-stroke); border-radius: var(--r-card); box-shadow: var(--shadow-pop); }
+.scrim { position: fixed; inset: 0; z-index: 50; background: rgba(30, 31, 36, .18); display: grid; place-items: center; padding: 24px; }
+.modal { background: #fff; border-radius: 20px; box-shadow: var(--shadow-pop); width: min(490px, 100%); max-height: calc(100vh - 48px); display: flex; flex-direction: column; overflow: hidden; }
+.modal-wide { width: min(640px, 100%); }
+.modal-head { display: flex; align-items: flex-end; justify-content: space-between; padding: 20px 28px 0; }
+.modal-head .tabs { margin: 0; flex: 1; }
+.modal-room { font-family: var(--font-data); font-weight: 700; font-size: 20px; letter-spacing: 0; padding-bottom: 8px; margin-left: 16px; }
+.modal-body { padding: 18px 28px; overflow: auto; }
+.modal-foot { display: flex; justify-content: flex-end; gap: 16px; padding: 12px 24px 22px; }
+.modal-title { font-family: var(--font-data); font-size: 18px; letter-spacing: 0; margin: 0; padding-bottom: 12px; }
+
+.drawer-scrim { position: fixed; inset: 0; z-index: 50; background: rgba(30, 31, 36, .18); }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 51; width: min(460px, 100%); background: #fff; box-shadow: var(--shadow-pop); border-radius: 20px 0 0 20px; display: flex; flex-direction: column; }
+.drawer-head { padding: 22px 26px 12px; display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.drawer-body { padding: 0 26px 20px; overflow: auto; flex: 1; }
+.drawer-foot { padding: 14px 26px 22px; display: flex; gap: 12px; justify-content: flex-end; border-top: 1px solid var(--light-stroke); }
+
+.toast-wrap { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 80; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.toast { background: var(--body); color: #fff; border-radius: 10px; padding: 10px 14px 10px 16px; font-size: 13px; display: flex; gap: 14px; align-items: center; box-shadow: var(--shadow-pop); animation: toast-in .18s ease-out; }
+.toast .link { color: var(--badge-type1); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(6px); } }
+
+/* ==========================================================================
+   Dashboard (238:3313) + Updates panel (301:1609)
+   ========================================================================== */
+.dash { display: grid; grid-template-columns: minmax(0, 650px) minmax(300px, 427px); gap: 40px; align-items: start; }
+.dash-head { display: flex; align-items: flex-end; justify-content: space-between; margin: 20px 0 14px; }
+.dash-head h1 { font-family: var(--font-data); font-weight: 500; font-size: var(--fs-h2); letter-spacing: 0; margin: 0; }
+.pills { display: flex; gap: 14px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 20px; margin-bottom: 32px; }
+.stat { position: relative; padding: 18px 20px 14px; min-height: 119px; text-align: left; background: #fff; border: 1px solid var(--secondary-cta-border); border-radius: var(--r-card); }
+.stat-sm { min-height: 76px; padding-bottom: 12px; }
+.stat-label { font-size: var(--fs-body1); color: var(--body-2); }
+.stat-value { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; }
+.stat-value b { font-family: var(--font-data); font-weight: 500; font-size: var(--fs-display); letter-spacing: 0; line-height: 52px; }
+.stat-sm .stat-value b { font-size: var(--fs-stat-sm); line-height: 32px; }
+.stat-value small { font-family: var(--font-data); font-size: 10px; letter-spacing: .4px; }
+.stat-link { position: absolute; right: 14px; bottom: 12px; display: inline-flex; align-items: center; gap: 2px; background: none; border: 0; padding: 0; color: var(--primary-cta-bg); font-family: var(--font-data); font-size: 9px; letter-spacing: .4px; }
+.stat-link svg { font-size: 9px; }
+.stat:hover { border-color: var(--primary-cta-bg); }
+
+.guest-list { margin: 0 28px 28px; background: #fff; border: 1px solid var(--secondary-cta-border); border-radius: var(--r-card); overflow: hidden; }
+.guest-row { display: flex; align-items: center; gap: 12px; padding: 18px 24px 16px; border-top: 1px solid var(--secondary-cta-border); }
+.guest-row:first-child { border-top: 0; }
+.guest-row .who { flex: 1; min-width: 0; }
+.guest-row .name { font-size: var(--fs-body1); }
+.guest-row .meta { font-size: var(--fs-body2); color: var(--unselected-text); margin-top: 5px; white-space: pre; }
+.guest-row .tag { margin-right: 8px; }
+.panel-search { margin: 0 28px 12px; }
+.panel-search .input { width: 100%; }
+
+.updates { position: sticky; top: 16px; }
+.updates-search { position: relative; margin-bottom: -18px; z-index: 1; }
+.updates-search .input { height: 44px; width: 100%; border-radius: 22px; border: 1px solid var(--secondary-cta-border); background: #fff; padding-left: 46px; font-size: 15px; }
+.updates-search svg { left: 18px; font-size: 18px; }
+.updates .panel { padding-top: 22px; }
+.updates-list { display: flex; flex-direction: column; gap: 17px; padding: 0 24px 24px; max-height: calc(100vh - 220px); overflow: auto; }
+.update { background: #fff; border: 1px solid var(--secondary-cta-border); border-radius: var(--r-card); padding: 22px 24px 18px; }
+.update h3 { font-size: 15px; font-weight: 500; margin: 0 0 8px; }
+.update p { font-size: var(--fs-body1); color: var(--body-2); margin: 0 0 12px; line-height: 1.35; }
+.update .when { font-size: var(--fs-body2); color: var(--body); margin-bottom: 16px; }
+.update .row { display: flex; gap: 12px; }
+.update.done { opacity: .6; }
+.update .resolved { font-size: var(--fs-body1); color: var(--primary-cta-bg); display: inline-flex; gap: 6px; align-items: center; }
+
+/* Notification popover reuses .update */
+.bell-pop { right: 60px; top: 48px; width: 380px; padding: 16px; max-height: 70vh; overflow: auto; display: flex; flex-direction: column; gap: 12px; background: var(--primary-bg); }
+.search-pop { right: 100px; top: 48px; width: 420px; padding: 12px; }
+.search-pop .input { width: 100%; height: 38px; }
+.search-results { margin-top: 10px; display: flex; flex-direction: column; max-height: 50vh; overflow: auto; }
+.search-results button { text-align: left; border: 0; background: none; padding: 8px 10px; border-radius: 8px; display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.search-results button:hover { background: var(--primary-bg); }
+.search-results small { color: var(--body-2); }
+
+/* ==========================================================================
+   Residents (238:3511 / 238:6730 / 238:4052)
+   ========================================================================== */
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+.toolbar-left, .toolbar-right { display: flex; align-items: center; gap: 12px; }
+.filter-btn { height: 28px; display: inline-flex; align-items: center; gap: 10px; padding: 0 12px 0 16px; border-radius: 6px; border: 1px solid var(--secondary-cta-border); background: #f9f9fb; color: var(--body-2); font-size: var(--fs-body1); position: relative; }
+.filter-btn .count { background: var(--primary-cta-bg); color: #fff; border-radius: 10px; padding: 0 6px; font-size: 10px; }
+.rows-label { font-family: var(--font-data); font-size: 12px; letter-spacing: 0; }
+.mini-select { position: relative; }
+.mini-select select { appearance: none; height: 28px; border-radius: 6px; border: 1px solid var(--secondary-cta-border); background: #f9f9fb; padding: 0 30px 0 16px; font-size: var(--fs-body1); color: var(--grey-subheading); }
+.mini-select svg { position: absolute; right: 10px; top: 9px; font-size: 11px; pointer-events: none; }
+
+.filter-pop { top: 36px; left: 0; width: 360px; padding: 14px 0 12px; }
+.filter-pop header { display: flex; justify-content: space-between; padding: 0 18px 10px; border-bottom: 1px solid var(--light-stroke); font-size: 12px; }
+.filter-rows { display: flex; flex-direction: column; gap: 8px; padding: 14px 18px 4px; }
+.filter-row { display: grid; grid-template-columns: 1fr 88px 1fr 20px; gap: 6px; align-items: center; }
+.filter-row select, .filter-row input { height: 24px; border-radius: 6px; border: 1px solid var(--secondary-cta-border); background: #fff; font-size: 10px; padding: 0 8px; }
+.filter-row input { background: #eeeff2; border-color: #eeeff2; }
+.filter-row button { border: 0; background: none; color: var(--body-2); padding: 0; }
+.filter-add { margin: 6px 18px 0; font-size: 10px; color: var(--grey-subheading); background: none; border: 0; padding: 0; }
+.filter-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 18px 0; }
+
+.table-wrap { overflow-x: auto; }
+table.data { width: 100%; border-collapse: collapse; font-family: var(--font-data); letter-spacing: 0; }
+table.data th { font-size: 9px; font-weight: 500; color: var(--grey-subheading); text-align: left; padding: 12px 10px 6px; white-space: nowrap; }
+table.data td { font-size: 12px; font-weight: 600; padding: 8px 10px; white-space: nowrap; }
+table.data tbody tr:hover td { background: var(--primary-bg); }
+table.data tr.floor-break td { padding: 10px 0; }
+table.data tr.floor-break td::after { content: ""; display: block; border-top: 2px solid var(--light-stroke); }
+table.data .actions { display: flex; gap: 10px; justify-content: flex-end; }
+table.data .actions button { border: 0; background: none; padding: 2px; font-size: 16px; color: var(--grey-subheading); }
+table.data .actions button:hover { color: var(--primary-cta-bg); }
+.sort-th { background: none; border: 0; padding: 0; font: inherit; color: inherit; display: inline-flex; gap: 4px; align-items: center; }
+.pager { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; font-size: 12px; color: var(--body-2); }
+.pager .row { display: flex; gap: 8px; }
+
+/* ==========================================================================
+   Resident profile (238:7204 → refined 293:10380)
+   ========================================================================== */
+.profile { display: grid; grid-template-columns: minmax(0, 1fr) 338px; gap: 40px; align-items: start; }
+.profile-cards { display: flex; flex-direction: column; gap: 12px; }
+.pcard { background: var(--primary-bg); border-radius: var(--r-card); padding: 20px 28px 22px; }
+.pcard h2 { font-size: 13px; color: var(--primary-cta-bg); margin: 0 0 14px; font-weight: 700; }
+.pgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 32px; }
+.pgrid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pgrid .kv dd { font-size: 13px; line-height: 1.35; white-space: normal; }
+.history { background: var(--primary-bg); border: 1px solid var(--light-stroke); border-radius: var(--r-card); padding: 20px 24px 24px; position: sticky; top: 16px; }
+.history h2 { font-family: var(--font-data); font-size: 14px; letter-spacing: 0; margin: 0 0 14px; font-weight: 500; }
+.history ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.history li { background: #fff; border: 1px solid var(--light-stroke); border-radius: var(--r-card); padding: 14px 18px; font-size: 12px; }
+.history li small { display: block; font-size: 9px; color: var(--body-2); margin-top: 6px; }
+.history li.marker { border-radius: var(--r-pill); padding: 6px 12px; text-align: center; font-size: 11px; }
+.history li.current { border-color: var(--primary-cta-bg); }
+.profile-actions { display: flex; gap: 12px; }
+
+/* ==========================================================================
+   Requests / Bookings (238:4593, 238:4993)
+   ========================================================================== */
+.req-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(218px, 1fr)); gap: 28px 26px; }
+.req { position: relative; background: #fff; border-radius: 16px; box-shadow: 0 2px 16px rgba(0,0,0,.08); padding: 20px 22px 18px 18px; display: flex; flex-direction: column; overflow: hidden; }
+.req.group::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 14px; background: var(--primary-cta-bg); }
+.req.group { padding-right: 32px; }
+.req-fields { display: grid; grid-template-columns: 1fr auto; gap: 14px 18px; margin-bottom: 20px; }
+.req-fields .kv dt { font-size: 8.5px; color: var(--grey-subheading); }
+.req-fields .kv dd { font-size: 12px; font-weight: 600; }
+.req .row { display: flex; gap: 10px; margin-top: auto; flex-wrap: wrap; }
+.req .status { position: absolute; top: 12px; right: 12px; }
+.req.group .status { right: 26px; }
+.req-kind { font-size: 9px; color: var(--primary-cta-bg); margin-bottom: 8px; }
+
+/* ==========================================================================
+   Hostel map (238:5393, 238:5576, 238:5796)
+   ========================================================================== */
+.map-page { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 20px; }
+.map-top { display: flex; justify-content: center; gap: 38px; margin: -6px 0 18px; }
+.map-canvas { position: relative; max-width: 720px; margin: 0 auto; width: 100%; }
+.map-canvas svg { width: 100%; height: auto; display: block; }
+.room { cursor: pointer; }
+.room rect { transition: stroke-width .12s; }
+.room:hover rect, .room:focus rect { stroke-width: 2.4; }
+.room:focus { outline: none; }
+.room.dim { opacity: .25; }
+.room.hidden-state { opacity: .12; }
+.room.selected rect { stroke: var(--body); stroke-width: 2.6; }
+.room text { font-family: var(--font-data); font-size: 8.5px; fill: var(--grey-subheading); pointer-events: none; }
+.room .flag { fill: var(--danger); }
+.map-legend { display: grid; grid-template-columns: repeat(3, max-content); gap: 12px 44px; margin: 14px auto 0; max-width: 720px; padding-left: 190px; font-size: 11px; color: var(--grey-subheading); }
+.legend-item { display: inline-flex; align-items: center; gap: 12px; background: none; border: 0; padding: 0; font-size: 11px; color: inherit; }
+.legend-item .sw { width: 20px; height: 20px; border-radius: 4px; border: 1px solid; }
+.legend-item[aria-pressed="false"] { opacity: .35; }
+.legend-item .n { color: var(--body-2); }
+.map-side { display: flex; flex-direction: column; align-items: flex-end; gap: 16px; }
+.floor-stepper { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 190px; }
+.floor-stepper .step { background: none; border: 0; font-size: 18px; color: var(--grey-subheading); padding: 4px; }
+.floor-btn { width: 44px; height: 44px; border-radius: 8px; border: 0; background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.14); font-family: var(--font-data); font-size: 18px; letter-spacing: 0; color: var(--grey-subheading); }
+.floor-btn[aria-current="true"] { background: var(--primary-cta-bg); color: #fff; }
+.map-options { display: flex; gap: 8px; align-items: center; font-size: 11px; color: var(--body-2); }
+
+/* Allot dialog body (238:5576) */
+.add-resident { display: flex; align-items: center; gap: 12px; height: 44px; border-radius: 22px; border: 2px solid var(--light-stroke); padding: 0 18px; color: var(--body-2); position: relative; }
+.add-resident input { border: 0; outline: none; flex: 1; font-size: 15px; background: transparent; }
+.add-resident:focus-within { border-color: var(--primary-cta-bg); }
+.suggest { position: absolute; left: 0; right: 0; top: 48px; z-index: 5; background: #fff; border: 1px solid var(--light-stroke); border-radius: 12px; box-shadow: var(--shadow-pop); max-height: 220px; overflow: auto; }
+.suggest button { width: 100%; text-align: left; background: none; border: 0; padding: 9px 14px; font-size: 12px; display: flex; justify-content: space-between; gap: 10px; }
+.suggest button:hover { background: var(--primary-bg); }
+.suggest small { color: var(--body-2); }
+.cand-list { margin-top: 18px; border-top: 1px solid var(--light-stroke); }
+.cand { display: grid; grid-template-columns: 1fr 1fr 1.4fr 20px; gap: 14px 16px; padding: 16px 2px 18px; border-bottom: 1px solid var(--light-stroke); }
+.cand:last-child { border-bottom: 0; }
+.cand .kv dt { font-size: 8.5px; color: var(--grey-subheading); }
+.cand .kv dd { font-size: 11px; }
+.cand .comments dd { font-weight: 400; line-height: 1.4; white-space: normal; }
+.cand .check { grid-column: 4; grid-row: 1; justify-self: end; }
+.cand-group { font-size: 10px; color: var(--primary-cta-bg); grid-column: 1 / -1; margin-bottom: -6px; }
+.warn-line { font-size: 11px; color: var(--warning); background: var(--warning-bg); border-radius: 8px; padding: 8px 12px; margin-top: 12px; }
+
+.occupant { border: 1px solid var(--light-stroke); border-radius: 14px; padding: 16px 18px; margin-bottom: 12px; }
+.occupant h3 { font-size: 17px; margin: 2px 0 14px; font-family: var(--font-data); letter-spacing: 0; }
+.occupant .pgrid { gap: 12px 18px; }
+.status-box { border: 1px solid var(--secondary-cta-border); border-radius: 10px; padding: 10px 14px; margin: 12px 0; font-family: var(--font-data); font-size: 12px; letter-spacing: 0; }
+.stack { display: flex; flex-direction: column; gap: 10px; }
+.stack .btn-outline-pill { width: 100%; }
+
+/* ==========================================================================
+   Stubs (Actions, Settings — not designed yet)
+   ========================================================================== */
+.stub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+.stub { border: 1px dashed var(--secondary-cta-border); border-radius: var(--r-card); padding: 18px 20px; background: #fff; }
+.stub h3 { font-size: 14px; margin: 0 0 6px; }
+.stub p { font-size: 12px; color: var(--body-2); margin: 0 0 12px; line-height: 1.4; }
+.stub.live { border-style: solid; }
+.note { font-size: 12px; color: var(--body-2); background: var(--primary-bg); border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; max-width: 70ch; line-height: 1.45; }
+.seg { display: inline-flex; border: 1px solid var(--secondary-cta-border); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: #fff; padding: 6px 14px; font-size: 12px; }
+.seg button[aria-pressed="true"] { background: var(--primary-cta-bg); color: #fff; }
+
+/* ==========================================================================
+   Responsive + motion
+   ========================================================================== */
+@media (max-width: 1180px) {
+  .dash { grid-template-columns: 1fr; }
+  .updates { position: static; }
+  .profile { grid-template-columns: 1fr; }
+  .history { position: static; }
+}
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; }
+  .topbar { padding: 16px 18px; }
+  .sidebar { position: static; height: auto; padding: 0 18px 12px; }
+  .nav { flex-direction: row; overflow-x: auto; gap: 8px; }
+  .nav a { padding: 0 16px; white-space: nowrap; font-size: 13px; }
+  .nav-settings { display: none; }
+  .main { padding: 8px 18px 48px; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .map-page { grid-template-columns: 1fr; }
+  .map-side { flex-direction: row; align-items: center; }
+  .floor-stepper { flex-direction: row; margin-top: 0; }
+  .map-legend { padding-left: 0; grid-template-columns: repeat(2, max-content); }
+  .map-top { gap: 10px; flex-wrap: wrap; }
+  .pgrid, .pgrid-3 { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+</style>
+</head>
+<body>
+  <div id="app"></div>
+  <!-- Order matters: plain scripts sharing the global `HMS` namespace -->
+  <script>
+/* Date helpers — ISO yyyy-mm-dd strings, local time, no timezone math. */
+window.HMS = window.HMS || {};
+
+HMS.date = {
+  add(iso, days) { const d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + days); return HMS.date.iso(d); },
+  iso(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); },
+  max(a, b) { return a > b ? a : b; },
+  days(from, to) { return Math.round((new Date(to + "T00:00:00") - new Date(from + "T00:00:00")) / 864e5); },
+  fmt(iso) { if (!iso) return "—"; const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; },
+  fmtShort(iso) { if (!iso) return "—"; const d = new Date(iso + "T00:00:00"); return d.getDate() + " " + d.toLocaleString("en-GB", { month: "short" }) + " " + d.getFullYear(); },
+  overlaps(from, to, day) { return from <= day && (to == null || to >= day); },
+};
+
+</script>
+  <script>
+/* ==========================================================================
+   Hostel 17 typical floor — geometry lifted from Figma node 238:5420
+   ("Frame 2491" inside "Bookings 1", 238:5393). Units are Figma px inside
+   the 806 × 780 frame, so the SVG viewBox can use them directly.
+
+   Each group is a straight run of rooms. `dir: "v"` stacks downward,
+   `dir: "h"` runs rightward. `reverse: true` numbers the run from the far
+   end so numbering goes clockwise around the building.
+
+   Wings are a proposal: the Figma "Wing A" dropdown exists but wings are not
+   drawn yet. A = west, B = north + north-east, C = east + south, D = inner
+   ring around the courtyard. Confirm with the Hall Manager before relying on it.
+   ========================================================================== */
+window.HMS = window.HMS || {};
+
+HMS.floorplan = (function () {
+  const GAP = 2.9;
+  const V = { w: 44.46, h: 29 };   // room in a vertical run
+  const H = { w: 29, h: 44.46 };   // room in a horizontal run
+
+  const groups = [
+    // Wing A — west
+    { id: "T1", wing: "A", dir: "v", x: 132.42, y: 19.33, n: 2 },
+    { id: "L1", wing: "A", dir: "v", x: 19.33, y: 19.33, n: 8 },
+    { id: "L2", wing: "A", dir: "v", x: 19.33, y: 344.1, n: 4 },
+    { id: "L3", wing: "A", dir: "v", x: 19.33, y: 521.96, n: 4 },
+    { id: "L4", wing: "A", dir: "v", x: 20.3, y: 653.41, n: 1 },
+    // Wing B — north
+    { id: "T2", wing: "B", dir: "h", x: 265.81, y: 19.33, n: 13 },
+    { id: "R1", wing: "B", dir: "v", x: 748.14, y: 19.33, n: 9 },
+    // Wing C — east + south
+    { id: "R2", wing: "C", dir: "v", x: 748.14, y: 435.93, n: 4 },
+    { id: "R3", wing: "C", dir: "h", x: 699.81, y: 624.41, n: 3, hh: 45.43 },
+    { id: "B1", wing: "C", dir: "h", x: 196.22, y: 629.25, n: 13, reverse: true },
+    // Wing D — inner ring
+    { id: "IT", wing: "D", dir: "h", x: 255.18, y: 148.85, n: 11 },
+    { id: "IR", wing: "D", dir: "v", x: 614.75, y: 201.05, n: 9 },
+    { id: "IB", wing: "D", dir: "h", x: 255.18, y: 504.56, n: 11, reverse: true },
+    { id: "IL", wing: "D", dir: "v", x: 199.12, y: 193.32, n: 9, reverse: true },
+  ];
+
+  // Non-bookable blocks drawn on the plan (labels are a guess — confirm on site)
+  const blocks = [
+    { x: 20.3, y: 275.48, w: 44.46, h: 63.8, kind: "common", label: "Pantry" },
+    { x: 749.1, y: 367.3, w: 44.46, h: 63.8, kind: "common", label: "Washroom" },
+    { x: 187.52, y: 19.33, w: 67.66, h: 55.1, kind: "common", label: "Stairs" },
+    { x: 194.28, y: 486.19, w: 54.13, h: 55.1, kind: "common", label: "Stairs" },
+    { x: 609.92, y: 493.92, w: 54.13, h: 55.1, kind: "common", label: "Stairs" },
+    { x: 24.16, y: 699.81, w: 172.05, h: 63.8, kind: "service", label: "Service" },
+  ];
+
+  const courtyard = { x: 248.32, y: 204.92, w: 354.74, h: 289.01 };
+
+  // Outline = union of (0,0,805,687) and (0,527,208,252), rounded
+  const outline =
+    "M12 0 H793 Q805 0 805 12 V675 Q805 687 793 687 H222 Q208 687 208 701 V767 Q208 779 196 779 H12 Q0 779 0 767 V12 Q0 0 12 0 Z";
+
+  /** Build the list of room slots for one floor. Index is 1-based and
+      clockwise, so floor 3 slot 5 → room "3005". */
+  function slots() {
+    const out = [];
+    let idx = 1;
+    for (const g of groups) {
+      const size = g.dir === "v" ? V : { w: H.w, h: g.hh || H.h };
+      const cells = [];
+      for (let i = 0; i < g.n; i++) {
+        const x = g.dir === "h" ? g.x + i * (size.w + GAP) : g.x;
+        const y = g.dir === "v" ? g.y + i * (size.h + GAP) : g.y;
+        cells.push({ x, y, w: size.w, h: size.h });
+      }
+      if (g.reverse) cells.reverse();
+      for (const c of cells) out.push({ ...c, idx: idx++, group: g.id, wing: g.wing });
+    }
+    return out;
+  }
+
+  const SLOTS = slots();
+  const FLOORS = [1, 2, 3, 4, 5, 6];
+  const WINGS = ["A", "B", "C", "D"];
+
+  function roomNo(floor, idx) {
+    return String(floor) + String(idx).padStart(3, "0");
+  }
+  function parseRoom(no) {
+    const s = String(no);
+    return { floor: Number(s.slice(0, -3)), idx: Number(s.slice(-3)) };
+  }
+  function wingOf(no) {
+    const { idx } = parseRoom(no);
+    const slot = SLOTS[idx - 1];
+    return slot ? slot.wing : null;
+  }
+  function allRooms() {
+    const out = [];
+    for (const f of FLOORS) for (const s of SLOTS) out.push(roomNo(f, s.idx));
+    return out;
+  }
+
+  return { SLOTS, FLOORS, WINGS, blocks, courtyard, outline, roomNo, parseRoom, wingOf, allRooms, viewBox: "0 0 806 780" };
+})();
+
+</script>
+  <script>
+/* ==========================================================================
+   Seed data — deterministic (seeded PRNG) so every reload and every
+   screenshot looks the same. Replace with API calls later; the shapes here
+   are the contract (see CLAUDE.md → Data model).
+
+   Hostel 17 is a women's hostel. Names in the Figma (Sakshi Tawde,
+   Kamika Chauhan, Yatri Amit Patel in 3005) are kept on purpose.
+   "Today" is pinned so the demo always has check-ins/outs today.
+   ========================================================================== */
+window.HMS = window.HMS || {};
+
+HMS.TODAY = "2026-09-23";
+
+HMS.seed = function seed() {
+  const fp = HMS.floorplan;
+  const D = HMS.date;
+
+  // mulberry32 — tiny deterministic PRNG
+  let s = 17_2026;
+  const rnd = () => { s |= 0; s = (s + 0x6d2b79f5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
+  const phone = () => String(7 + Math.floor(rnd() * 3)) + String(Math.floor(rnd() * 1e9)).padStart(9, "0");
+
+  const FIRST = ["Aanya","Aditi","Ananya","Anushka","Bhavya","Charvi","Diya","Eesha","Gauri","Hritika","Ishita","Janhvi","Kavya","Khushi","Lavanya","Mahika","Meera","Mitali","Naina","Neha","Nidhi","Pooja","Prachi","Pranjal","Riya","Ruchi","Saanvi","Sakshi","Samiksha","Shreya","Sneha","Srishti","Tanvi","Trisha","Urvi","Vaishnavi","Vidhi","Yashika","Zoya","Aarohi","Anvi","Deepika","Harini","Keerthana","Lakshmi","Madhura","Nandini","Pallavi","Radhika","Swathi"];
+  const LAST = ["Sharma","Iyer","Patel","Rao","Deshpande","Kulkarni","Nair","Reddy","Gupta","Joshi","Mehta","Chauhan","Tawde","Menon","Banerjee","Das","Singh","Verma","Pillai","Shetty","Kapoor","Bose","Mishra","Agarwal","Khan","Fernandes","Naik","Pandey","Sinha","Bhatt"];
+  const DEPTS = ["IDC","CSE","EE","ME","CE","Chemistry","Physics","HSS","Aerospace","Chemical","Metallurgy","Earth Sciences","Energy Science","Biosciences"];
+  const CITIES = ["Pune, Maharashtra","Nagpur, Maharashtra","Indore, Madhya Pradesh","Jaipur, Rajasthan","Kochi, Kerala","Hyderabad, Telangana","Lucknow, Uttar Pradesh","Bhubaneswar, Odisha","Guwahati, Assam","Ahmedabad, Gujarat","Chennai, Tamil Nadu","Bengaluru, Karnataka"];
+  const BLOOD = ["A +ve","A -ve","B +ve","B -ve","O +ve","O -ve","AB +ve"];
+  const FACULTY = ["Prof. Anirudh Joshi","Prof. Ravi Poovaiah","Prof. Girish Dalvi","Prof. Supradip Das","Prof. Varsha Apte","Prof. Kavi Arya","Prof. Madhu Belur","Prof. Shireesh Kedare"];
+
+  const PROGRAMS = [
+    { group: "Bachelors", degrees: ["B.Tech.","B.Des.","B.S.","Dual Degree"], code: "B", years: 4, weight: .5 },
+    { group: "Masters", degrees: ["M.Tech.","M.Des.","M.Sc.","M.B.A."], code: "M", years: 2, weight: .28 },
+    { group: "PhD", degrees: ["Ph.D."], code: "D", years: 5, weight: .22 },
+  ];
+
+  const residents = [];
+  const guests = [];
+  const stays = [];
+  const maintenance = [];
+  const bookings = [];
+  const updates = [];
+  let rid = 1, gid = 1, sid = 1;
+
+  const rooms = fp.allRooms();
+  const taken = new Set();
+
+  function makeResident(overrides = {}) {
+    const r = rnd();
+    const prog = r < PROGRAMS[0].weight ? PROGRAMS[0] : r < PROGRAMS[0].weight + PROGRAMS[1].weight ? PROGRAMS[1] : PROGRAMS[2];
+    const joinYear = 2026 - Math.floor(rnd() * Math.min(prog.years, 4));
+    const yy = String(joinYear).slice(2);
+    const first = pick(FIRST), last = pick(LAST);
+    const city = pick(CITIES);
+    const semester = Math.min((2026 - joinYear) * 2 + 1, prog.years * 2);
+    const res = {
+      id: "RS-" + String(rid++).padStart(4, "0"),
+      roll: yy + prog.code + String(1000 + Math.floor(rnd() * 8999)),
+      name: first + " " + last,
+      programGroup: prog.group,
+      degree: pick(prog.degrees),
+      dept: pick(DEPTS),
+      semester,
+      phone: phone(),
+      email: "",
+      dob: `${2008 - (2026 - joinYear) - Math.floor(rnd() * 3) - (prog.code === "B" ? 0 : prog.code === "M" ? 4 : 6)}-${String(1 + Math.floor(rnd() * 12)).padStart(2, "0")}-${String(1 + Math.floor(rnd() * 27)).padStart(2, "0")}`,
+      gender: "Female",
+      nationality: rnd() < .96 ? "Indian" : pick(["Nepali","Sri Lankan","Bangladeshi"]),
+      blood: pick(BLOOD),
+      homeAddress: `${10 + Math.floor(rnd() * 180)}, ${pick(["Shreeram Pride","Gokul Heights","Anand Nagar","Lake View Apts","Sai Residency","Green Park"])}, ${city}`,
+      joined: `${joinYear}-07-${String(20 + Math.floor(rnd() * 8)).padStart(2, "0")}`,
+      expectedExit: `${joinYear + prog.years}-05-31`,
+      advisor: { name: pick(FACULTY), phone: phone() },
+      guardian: { name: pick(FIRST.slice(0, 20)).replace(/a$/, "") + " " + last, relation: pick(["Father","Mother"]), phone: phone() },
+      mentor: { name: pick(FIRST) + " " + pick(LAST), phone: phone() },
+      emergency: [phone(), phone()],
+      remarks: [],
+      room: null,
+      history: [],
+      ...overrides,
+    };
+    res.email = res.roll.toLowerCase() + "@iitb.ac.in";
+    return res;
+  }
+
+  function place(res, room, from) {
+    res.room = room;
+    taken.add(room);
+    stays.push({ id: "ST-" + sid++, room, kind: "resident", personId: res.id, from, to: res.expectedExit });
+    res.history.unshift({ type: "allotted", room, date: from });
+  }
+
+  // 1. Yatri Amit Patel in 3005 — the resident shown in the Figma profile
+  const yatri = makeResident({ name: "Yatri Amit Patel", roll: "24B3625", programGroup: "Bachelors", degree: "B.Des.", dept: "IDC", semester: 5, joined: "2024-07-22", expectedExit: "2028-05-31", nationality: "Indian", blood: "A -ve" });
+  yatri.email = "24b3625@iitb.ac.in";
+  // newest first — place() adds the current H17 allotment on top
+  yatri.history = [
+    { type: "shift", date: "2025-07-18", note: "Hostel shift to 17" },
+    { type: "vacated", room: "4012", date: "2025-05-10", hostel: "H4" },
+    { type: "allotted", room: "4012", date: "2024-07-22", hostel: "H4" },
+  ];
+  residents.push(yatri);
+  place(yatri, "3005", "2025-07-18");
+
+  // 2. Fill ~50% of rooms with residents
+  for (const room of rooms) {
+    if (taken.has(room)) continue;
+    const { idx } = fp.parseRoom(room);
+    if (idx === 19) continue;          // L4 corner room — kept for maintenance
+    if (rnd() < 0.49) {
+      const res = makeResident();
+      residents.push(res);
+      const from = D.max(res.joined, "2025-07-15");
+      if (res.joined < "2025-07-15" && rnd() < .5) {
+        const oldRoom = fp.roomNo(1 + Math.floor(rnd() * 6), 1 + Math.floor(rnd() * 101));
+        res.history.push({ type: "vacated", room: oldRoom, date: "2025-05-12" }, { type: "allotted", room: oldRoom, date: res.joined });
+      }
+      place(res, room, from);
+    }
+  }
+
+  // 3. Maintenance — corner room on every floor + a few random
+  for (const f of fp.FLOORS) {
+    const room = fp.roomNo(f, 19);
+    maintenance.push({ id: "MT-" + f, room, from: "2026-09-10", to: null, note: pick(["Seepage on west wall","Window latch broken","Ceiling fan replacement","Bathroom tap leaking"]), reportedBy: "Hall Manager" });
+    taken.add(room);
+  }
+  for (const room of ["2044", "5071", "3088"]) {
+    if (taken.has(room)) continue;
+    maintenance.push({ id: "MT-" + room, room, from: "2026-09-18", to: "2026-09-28", note: "Repainting after vacate", reportedBy: "Hall Manager" });
+    taken.add(room);
+  }
+
+  const freeRooms = () => rooms.filter((r) => !taken.has(r));
+  const freeOnFloor = (f) => freeRooms().filter((r) => fp.parseRoom(r).floor === f);
+
+  function mkGuest(name, contact, bookingId, relation) {
+    const g = { id: "GS-" + String(gid++).padStart(4, "0"), name, contact: contact || phone(), bookingId, relation: relation || "" };
+    guests.push(g);
+    return g;
+  }
+  function guestStay(g, room, from, to) {
+    taken.add(room);
+    stays.push({ id: "ST-" + sid++, room, kind: "guest", personId: g.id, from, to });
+  }
+
+  // 4. Bookings — mirror the dashboard + requests screens
+  let bn = 2101;
+  const bid = () => "BK-" + bn++;
+  const studentFor = () => pick(residents);
+
+  // In-house now (dashboard "Guests" list)
+  {
+    const id = bid();
+    const b = { id, kind: "individual", source: "student", requestedBy: residents[3].name, requesterRoll: residents[3].roll, title: "Sakshi Tawde", count: 1, from: "2026-09-20", to: "2026-09-25", requestedOn: "2026-09-12", contact: phone(), comments: "Cousin visiting for campus placement interviews.", status: "allotted", guestIds: [] };
+    const g = mkGuest("Sakshi Tawde", b.contact, id, "Cousin");
+    b.guestIds.push(g.id); bookings.push(b);
+    const room = "3007"; if (!taken.has(room)) guestStay(g, room, b.from, b.to); else guestStay(g, freeOnFloor(3)[0], b.from, b.to);
+  }
+  {
+    const id = bid();
+    const b = { id, kind: "group", source: "department", requestedBy: "IDC Office", title: "Student guests : 7", count: 7, from: "2026-09-18", to: "2026-09-30", requestedOn: "2026-09-05", contact: phone(), comments: "Exchange students from TU Delft for the Design Studio workshop.", status: "allotted", guestIds: [] };
+    const floor2 = freeOnFloor(2).slice(0, 7);
+    for (let i = 0; i < 7; i++) { const g = mkGuest(pick(FIRST) + " " + pick(["de Vries","Jansen","Bakker","Visser","Smit","Meijer","Mulder"]), null, id, "Exchange student"); b.guestIds.push(g.id); guestStay(g, floor2[i], b.from, b.to); }
+    bookings.push(b);
+  }
+  {
+    const id = bid();
+    const host = residents.find((r) => r.name.startsWith("Kamika")) || residents[8];
+    host.name = "Kamika Chauhan";
+    const b = { id, kind: "individual", source: "student", requestedBy: host.name, requesterRoll: host.roll, title: "Kamika Chauhan Parents", count: 2, from: "2026-09-21", to: "2026-09-24", requestedOn: "2026-09-10", contact: phone(), comments: "Parents visiting for convocation.", status: "allotted", guestIds: [] };
+    const room = freeOnFloor(3).find((r) => r > "3008") || freeOnFloor(3)[0];
+    for (const n of ["Rajesh Chauhan", "Sunita Chauhan"]) { const g = mkGuest(n, b.contact, id, "Parent"); b.guestIds.push(g.id); guestStay(g, room, b.from, b.to); }
+    bookings.push(b);
+  }
+  // Checking out today (dashboard "Today check out")
+  for (let i = 0; i < 4; i++) {
+    const id = bid(); const host = studentFor();
+    const b = { id, kind: "individual", source: "student", requestedBy: host.name, requesterRoll: host.roll, title: host.name, count: 1, from: "2026-09-19", to: HMS.TODAY, requestedOn: "2026-09-08", contact: phone(), comments: pick(["Sister visiting.","Mother visiting for medical appointment.","Friend attending Techfest planning meet."]), status: "allotted", guestIds: [] };
+    const g = mkGuest(pick(FIRST) + " " + host.name.split(" ")[1], b.contact, id, pick(["Sister","Mother","Friend"]));
+    b.guestIds.push(g.id); guestStay(g, freeOnFloor(4 + (i % 2))[i], b.from, b.to); bookings.push(b);
+  }
+  // Checking in today
+  {
+    const id = bid();
+    const b = { id, kind: "group", source: "hcu", requestedBy: "HCU Office", title: "Interview candidates", count: 5, from: HMS.TODAY, to: "2026-09-26", requestedOn: "2026-09-15", contact: phone(), comments: "M.Des admission interview candidates. Routed by HCU after Dean SA approval.", status: "allotted", guestIds: [] };
+    const fl = freeOnFloor(5);
+    for (let i = 0; i < 5; i++) { const g = mkGuest(pick(FIRST) + " " + pick(LAST), null, id, "Candidate"); b.guestIds.push(g.id); guestStay(g, fl[i], b.from, b.to); }
+    bookings.push(b);
+  }
+  // Other in-house guests to reach ~35
+  for (let i = 0; i < 9; i++) {
+    const id = bid(); const host = studentFor();
+    const from = D.add(HMS.TODAY, -Math.floor(rnd() * 5) - 1); const to = D.add(HMS.TODAY, Math.floor(rnd() * 6) + 1);
+    const n = rnd() < .35 ? 2 : 1;
+    const b = { id, kind: "individual", source: "student", requestedBy: host.name, requesterRoll: host.roll, title: n === 2 ? host.name.split(" ")[0] + " " + host.name.split(" ")[1] + " Parents" : host.name, count: n, from, to, requestedOn: D.add(from, -8), contact: phone(), comments: pick(["Parents visiting.","Parents visiting for convocation.","Sister visiting over the weekend."]), status: "allotted", guestIds: [] };
+    const room = freeOnFloor(1 + (i % 6))[2];
+    for (let k = 0; k < n; k++) { const g = mkGuest(pick(FIRST) + " " + host.name.split(" ")[1], b.contact, id, n === 2 ? "Parent" : "Sister"); b.guestIds.push(g.id); guestStay(g, room, from, to); }
+    bookings.push(b);
+  }
+
+  // Pending — show up on Requests + Updates
+  const pending = [
+    { kind: "group", source: "department", requestedBy: "IDC Office", title: "20 females", count: 20, from: "2026-10-12", to: "2026-10-16", requestedOn: "2026-09-21", comments: "IDC Design Symposium speakers and student volunteers from partner institutes. Dean SA approved on 19/09." },
+    { kind: "group", source: "hcu", requestedBy: "HCU Office", title: "Interview students accommodation", count: 15, from: "2026-10-05", to: "2026-10-08", requestedOn: "2026-09-22", comments: "PhD interview candidates (Chemistry). Female candidates only; routed by HCU." },
+    { kind: "group", source: "department", requestedBy: "IRCC", title: "Winter research interns", count: 6, from: "2026-12-01", to: "2026-12-31", requestedOn: "2026-09-19", comments: "IRCC internship programme. List attached by IRCC." },
+  ];
+  for (const p of pending) {
+    const id = bid();
+    const b = { id, ...p, contact: phone(), status: "pending", guestIds: [] };
+    for (let i = 0; i < p.count; i++) b.guestIds.push(mkGuest(pick(FIRST) + " " + pick(LAST), null, id, p.source === "hcu" ? "Candidate" : "Delegate").id);
+    bookings.push(b);
+  }
+  for (let i = 0; i < 9; i++) {
+    const id = bid(); const host = studentFor();
+    const from = D.add(HMS.TODAY, 3 + Math.floor(rnd() * 20)); const days = 2 + Math.floor(rnd() * 4);
+    const n = rnd() < .3 ? 2 : 1;
+    const b = { id, kind: "individual", source: "student", requestedBy: host.name, requesterRoll: host.roll, title: host.name, count: n, from, to: D.add(from, days), requestedOn: D.add(HMS.TODAY, -Math.floor(rnd() * 4)), contact: host.phone, comments: pick(["Parents visiting for Diwali break.","Mother visiting for a medical check-up in Powai.","Sister coming for Mood Indigo.","Parents attending Institute Day."]), status: i < 2 ? "accepted" : "pending", guestIds: [] };
+    for (let k = 0; k < n; k++) b.guestIds.push(mkGuest(pick(FIRST) + " " + host.name.split(" ")[1], b.contact, id, n === 2 ? "Parent" : "Mother").id);
+    bookings.push(b);
+  }
+  // Past
+  for (let i = 0; i < 6; i++) {
+    const id = bid(); const host = studentFor();
+    const from = D.add(HMS.TODAY, -40 + i * 5); const to = D.add(from, 3);
+    const b = { id, kind: i === 0 ? "group" : "individual", source: i === 0 ? "department" : "student", requestedBy: i === 0 ? "EE Office" : host.name, requesterRoll: i === 0 ? undefined : host.roll, title: i === 0 ? "VLSI workshop speakers" : host.name, count: i === 0 ? 4 : 1, from, to, requestedOn: D.add(from, -10), contact: phone(), comments: i === 5 ? "Dates clash with room repainting." : "Completed.", status: i === 5 ? "rejected" : "completed", guestIds: [] };
+    bookings.push(b);
+  }
+
+  // 5. Updates — the notification feed (Group 45 · 301:1609)
+  const pendingHcu = bookings.find((b) => b.source === "hcu" && b.status === "pending");
+  const sakshi = bookings[0];
+  updates.push(
+    { id: "UP-1", type: "booking", bookingId: pendingHcu.id, title: "Interview students accommodation request", body: "HCU | " + pendingHcu.count + " students", from: pendingHcu.from, to: pendingHcu.to, state: "open" },
+    { id: "UP-2", type: "extension", bookingId: sakshi.id, title: "Extension request · Sakshi Tawde", body: "Requested by " + sakshi.requestedBy + ". Stay until 27/09 instead of 25/09.", from: sakshi.from, to: "2026-09-27", state: "open" },
+    { id: "UP-3", type: "leave", residentId: residents[12].id, title: "Leave notice · " + residents[12].name, body: "Going home for Navratri. Room " + residents[12].room + " stays retained.", from: "2026-09-26", to: "2026-10-04", state: "open" },
+    { id: "UP-4", type: "maintenance", room: "4031", title: "Repair reported · Room 4031", body: "Resident reports a broken window latch. Mark the room under maintenance?", from: HMS.TODAY, to: null, state: "open" },
+  );
+
+  return { residents, guests, stays, maintenance, bookings, updates, customTabs: [], settings: { lang: "en", hostel: "Hostel 17" } };
+};
+
+</script>
+  <script>
+/* ==========================================================================
+   Store — the only place that reads or writes data.
+   Views call selectors (read) and mutations (write), never touch `state`.
+   To move to a backend, keep these function signatures and swap the bodies
+   for API calls.
+   ========================================================================== */
+window.HMS = window.HMS || {};
+
+HMS.store = (function () {
+  const KEY = "iitb-hms-hall-manager-v1";
+  let state = load();
+  const listeners = new Set();
+
+  function load() {
+    try { const raw = localStorage.getItem(KEY); if (raw) return JSON.parse(raw); } catch (e) { /* storage blocked */ }
+    return HMS.seed();
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ } }
+  function commit() { save(); listeners.forEach((fn) => fn()); }
+  function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
+  function reset() { state = HMS.seed(); commit(); }
+
+  const byId = (list, id) => list.find((x) => x.id === id);
+  const D = HMS.date;
+  let uid = Date.now() % 100000;
+  const nid = (p) => p + "-" + (uid++).toString(36);
+
+  /* ------------------------------ Selectors ------------------------------ */
+  const sel = {
+    raw: () => state,
+    resident: (id) => byId(state.residents, id),
+    residentByRoom: (room) => state.residents.find((r) => r.room === room),
+    guest: (id) => byId(state.guests, id),
+    booking: (id) => byId(state.bookings, id),
+    bookings: () => state.bookings,
+    updates: () => state.updates,
+    customTabs: () => state.customTabs,
+    settings: () => state.settings,
+
+    /** Stays active on `day` in `room` */
+    staysIn(room, day) { return state.stays.filter((s) => s.room === room && D.overlaps(s.from, s.to, day)); },
+    maintenanceIn(room, day) { return state.maintenance.find((m) => m.room === room && D.overlaps(m.from, m.to, day)); },
+
+    /** One of: "allotted" | "guest" | "maintenance" | "empty" */
+    roomState(room, day) {
+      if (sel.maintenanceIn(room, day)) return "maintenance";
+      const st = sel.staysIn(room, day);
+      if (!st.length) return "empty";
+      return st.some((s) => s.kind === "resident") ? "allotted" : "guest";
+    },
+
+    occupants(room, day) {
+      return sel.staysIn(room, day).map((s) => ({ stay: s, person: s.kind === "resident" ? sel.resident(s.personId) : sel.guest(s.personId) }));
+    },
+
+    stats(day) {
+      const rooms = HMS.floorplan.allRooms();
+      let empty = 0, allotted = 0, guestRooms = 0, maint = 0;
+      for (const r of rooms) {
+        const st = sel.roomState(r, day);
+        if (st === "empty") empty++; else if (st === "allotted") allotted++; else if (st === "guest") guestRooms++; else maint++;
+      }
+      const guestStays = state.stays.filter((s) => s.kind === "guest");
+      return {
+        total: rooms.length, empty, occupied: allotted + guestRooms, allotted, guestRooms, maint,
+        guests: guestStays.filter((s) => D.overlaps(s.from, s.to, day)).length,
+        checkIns: new Set(guestStays.filter((s) => s.from === day).map((s) => s.room)).size,
+        checkOuts: new Set(guestStays.filter((s) => s.to === day).map((s) => s.room)).size,
+      };
+    },
+
+    /** Guest bookings with at least one guest in-house on `day` */
+    inHouseBookings(day) {
+      return state.bookings.filter((b) => b.status === "allotted" && sel.bookingStays(b.id).some((s) => D.overlaps(s.from, s.to, day)));
+    },
+    bookingStays(bookingId) {
+      const b = sel.booking(bookingId); if (!b) return [];
+      return state.stays.filter((s) => s.kind === "guest" && b.guestIds.includes(s.personId));
+    },
+    bookingRooms(bookingId) { return [...new Set(sel.bookingStays(bookingId).map((s) => s.room))].sort(); },
+
+    /** Guests still waiting for a room — accepted bookings, guest not yet allotted */
+    unhousedGuests() {
+      const housed = new Set(state.stays.filter((s) => s.kind === "guest").map((s) => s.personId));
+      const out = [];
+      for (const b of state.bookings) if (b.status === "accepted") for (const gid of b.guestIds) if (!housed.has(gid)) out.push({ guest: sel.guest(gid), booking: b });
+      return out;
+    },
+
+    /** Rows for the Residents table; tab = Bachelors | Masters | PhD | Guests */
+    residentRows(tab, day) {
+      if (tab === "Guests") {
+        return state.stays.filter((s) => s.kind === "guest" && D.overlaps(s.from, s.to, day)).map((s) => {
+          const g = sel.guest(s.personId); const b = sel.booking(g.bookingId);
+          return { kind: "guest", id: g.id, room: s.room, name: g.name, arrival: s.from, departure: s.to, contact: g.contact, requestedBy: b ? b.requestedBy : "", booking: b ? b.id : "" };
+        });
+      }
+      return state.residents.filter((r) => r.room && (!tab || r.programGroup === tab)).map((r) => ({
+        kind: "resident", id: r.id, room: r.room, roll: r.roll, name: r.name, dept: r.dept, program: r.degree, contact: r.phone, semester: r.semester, programGroup: r.programGroup,
+      }));
+    },
+
+    search(q) {
+      q = q.trim().toLowerCase(); if (!q) return [];
+      const out = [];
+      for (const r of state.residents) if (r.room && (r.name.toLowerCase().includes(q) || r.roll.toLowerCase().includes(q) || r.room.includes(q))) out.push({ type: "resident", id: r.id, label: r.name, sub: r.roll + " · Room " + r.room });
+      for (const g of state.guests) if (g.name.toLowerCase().includes(q)) { const st = state.stays.find((s) => s.personId === g.id); out.push({ type: "guest", id: g.id, label: g.name, sub: "Guest" + (st ? " · Room " + st.room : " · Not allotted") }); }
+      if (/^\d{4}$/.test(q)) out.unshift({ type: "room", id: q, label: "Room " + q, sub: "Open on Hostel map" });
+      return out.slice(0, 12);
+    },
+  };
+
+  /* ------------------------------ Mutations ------------------------------ */
+  const act = {
+    acceptBooking(id) { const b = sel.booking(id); if (!b) return; b.status = "accepted"; closeUpdatesFor(id, "accepted"); commit(); },
+    rejectBooking(id, reason) { const b = sel.booking(id); if (!b) return; b.status = "rejected"; b.rejectReason = reason || ""; closeUpdatesFor(id, "rejected"); commit(); },
+
+    /** Put the given guests into `room` for their booking's dates */
+    allotGuests(room, guestIds) {
+      for (const gid of guestIds) {
+        const g = sel.guest(gid); const b = sel.booking(g.bookingId);
+        state.stays.push({ id: nid("ST"), room, kind: "guest", personId: gid, from: b.from, to: b.to });
+      }
+      for (const b of state.bookings) if (b.status === "accepted" && b.guestIds.every((gid) => state.stays.some((s) => s.personId === gid))) b.status = "allotted";
+      commit();
+    },
+
+    /** Give an unhoused resident a room (from "Add resident" in the allot dialog) */
+    allotResident(room, residentId, from) {
+      const r = sel.resident(residentId);
+      if (r.room) act.vacateResident(r.id, from, true);
+      r.room = room;
+      state.stays.push({ id: nid("ST"), room, kind: "resident", personId: r.id, from, to: r.expectedExit });
+      r.history.unshift({ type: "allotted", room, date: from });
+      commit();
+    },
+
+    /** Walk-in / new person typed into "Add resident" — creates a single-person booking */
+    addWalkInGuest(room, name, from, to, comments) {
+      const id = nid("BK");
+      const g = { id: nid("GS"), name, contact: "", bookingId: id, relation: "Walk-in" };
+      state.guests.push(g);
+      state.bookings.push({ id, kind: "individual", source: "hall-manager", requestedBy: "Hall Manager", title: name, count: 1, from, to, requestedOn: HMS.TODAY, contact: "", comments: comments || "Added directly by Hall Manager.", status: "allotted", guestIds: [g.id] });
+      state.stays.push({ id: nid("ST"), room, kind: "guest", personId: g.id, from, to });
+      commit();
+    },
+
+    extendStay(stayId, to) {
+      const s = state.stays.find((x) => x.id === stayId); if (!s) return;
+      s.to = to;
+      if (s.kind === "guest") { const g = sel.guest(s.personId); const b = sel.booking(g.bookingId); if (b && to > b.to) b.to = to; }
+      commit();
+    },
+
+    updateBookingDates(id, from, to) {
+      const b = sel.booking(id); if (!b) return;
+      for (const s of sel.bookingStays(id)) { if (s.from === b.from) s.from = from; if (s.to === b.to) s.to = to; }
+      b.from = from; b.to = to;
+      commit();
+    },
+
+    checkOutStay(stayId, day) {
+      const s = state.stays.find((x) => x.id === stayId); if (!s) return;
+      s.to = D.add(day, -1) < s.from ? s.from : D.add(day, -1);
+      if (s.kind === "guest") state.stays = state.stays.filter((x) => !(x.id === stayId && x.from > x.to));
+      commit();
+    },
+
+    vacateResident(id, day, silent) {
+      const r = sel.resident(id); if (!r || !r.room) return;
+      const st = state.stays.find((s) => s.personId === id && s.kind === "resident" && D.overlaps(s.from, s.to, day));
+      if (st) st.to = D.add(day, -1) < st.from ? st.from : D.add(day, -1);
+      r.history.unshift({ type: "vacated", room: r.room, date: day });
+      r.room = null;
+      if (!silent) commit();
+    },
+
+    setMaintenance(room, note, from) { state.maintenance.push({ id: nid("MT"), room, from, to: null, note, reportedBy: "Hall Manager" }); commit(); },
+    clearMaintenance(room, day) { for (const m of state.maintenance) if (m.room === room && D.overlaps(m.from, m.to, day)) m.to = D.add(day, -1) < m.from ? m.from : D.add(day, -1); commit(); },
+
+    updateResident(id, patch) { Object.assign(sel.resident(id), patch); commit(); },
+    addRemark(id, text) { sel.resident(id).remarks.unshift({ text, date: HMS.TODAY, by: "Hall Manager" }); commit(); },
+
+    /** Hall Manager books guests on someone's behalf (Book dialog · 306:2388) */
+    createBooking(data) {
+      const id = nid("BK");
+      const b = { id, kind: data.guests.length > 1 ? "group" : "individual", source: "hall-manager", requestedBy: data.requestedBy || "Hall Manager", title: data.guests.length > 1 ? data.guests.length + " guests" : data.guests[0].name, count: data.guests.length, from: data.from, to: data.to, requestedOn: HMS.TODAY, contact: data.guests[0].contact || "", comments: data.comments || "", status: "accepted", guestIds: [] };
+      for (const g of data.guests) { const gg = { id: nid("GS"), name: g.name, contact: g.contact || "", bookingId: id, relation: "" }; state.guests.push(gg); b.guestIds.push(gg.id); }
+      state.bookings.unshift(b);
+      commit();
+      return b;
+    },
+
+    resolveUpdate(id, accepted) {
+      const u = byId(state.updates, id); if (!u) return;
+      u.state = accepted ? "accepted" : "rejected";
+      if (u.type === "booking") { const b = sel.booking(u.bookingId); if (b) b.status = accepted ? "accepted" : "rejected"; }
+      if (u.type === "extension" && accepted) for (const s of sel.bookingStays(u.bookingId)) s.to = u.to;
+      if (u.type === "extension" && accepted) { const b = sel.booking(u.bookingId); if (b) b.to = u.to; }
+      if (u.type === "maintenance" && accepted) state.maintenance.push({ id: nid("MT"), room: u.room, from: HMS.TODAY, to: null, note: u.body, reportedBy: "Resident" });
+      if (u.type === "leave") { const r = sel.resident(u.residentId); if (r) r.remarks.unshift({ text: `On leave ${D.fmt(u.from)} – ${D.fmt(u.to)}. Room retained.`, date: HMS.TODAY, by: "Hall Manager" }); }
+      commit();
+    },
+
+    notify(to, message, context) { state.updates.push({ id: nid("UP"), type: "sent", title: "Sent to " + to, body: message, context, from: HMS.TODAY, to: null, state: "sent" }); commit(); },
+
+    saveCustomTab(tab) { state.customTabs.push({ id: nid("TAB"), ...tab }); commit(); return state.customTabs[state.customTabs.length - 1]; },
+    removeCustomTab(id) { state.customTabs = state.customTabs.filter((t) => t.id !== id); commit(); },
+    setSetting(k, v) { state.settings[k] = v; commit(); },
+  };
+
+  function closeUpdatesFor(bookingId, to) { for (const u of state.updates) if (u.bookingId === bookingId && u.type === "booking" && u.state === "open") u.state = to; }
+
+  return { sel, act, subscribe, reset };
+})();
+
+</script>
+  <script>
+/* ==========================================================================
+   UI helpers — icons, escaping, overlays (modal / drawer / popover), toasts.
+   Icons are hand-drawn to match Phosphor "light" (the set used in Figma:
+   MagnifyingGlass 90:2742, PencilSimple 90:2175, CaretRight 90:2431,
+   GearSix 90:3238). Swap for @phosphor-icons/web when you add a bundler.
+   ========================================================================== */
+window.HMS = window.HMS || {};
+
+HMS.ui = (function () {
+  const P = {
+    search: '<circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/>',
+    bell: '<path d="M6 10a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 16 6 10Z"/><path d="M9.5 20.5a2.6 2.6 0 0 0 5 0"/><path d="M4 4.5 2.8 6M20 4.5 21.2 6"/>',
+    gear: '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2.4M12 19.1v2.4M4.6 4.6l1.7 1.7M17.7 17.7l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.6 19.4l1.7-1.7M17.7 6.3l1.7-1.7"/><circle cx="12" cy="12" r="7"/>',
+    pencil: '<path d="M15.5 4.5 19.5 8.5 8.5 19.5H4.5v-4Z"/><path d="M13 7l4 4"/>',
+    eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3.2"/>',
+    caretRight: '<path d="m9 5 7 7-7 7"/>',
+    caretDown: '<path d="m5 9 7 7 7-7"/>',
+    caretUp: '<path d="m5 15 7-7 7 7"/>',
+    caretLeft: '<path d="m15 5-7 7 7 7"/>',
+    check: '<path d="m4.5 12.5 5 5 10-11"/>',
+    x: '<path d="M6 6l12 12M18 6 6 18"/>',
+    funnel: '<path d="M3.5 5h17l-6.5 8v6l-4-2v-4Z"/>',
+    sort: '<path d="M4 6h9M4 12h7M4 18h5"/><path d="M17 5v14M14 16l3 3 3-3"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    building: '<rect x="4" y="3.5" width="11" height="17" rx="1"/><path d="M15 9.5h4.5a.5.5 0 0 1 .5.5v10.5M2.5 20.5h19M7.5 7.5h1M11 7.5h1M7.5 11h1M11 11h1M7.5 14.5h1M11 14.5h1M9 20.5v-3h1v3"/>',
+    list: '<path d="M10 6h10M10 12h10M10 18h10"/><path d="m3.5 6 1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11"/><path d="M4 18h2.5"/>',
+    arrow: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
+    download: '<path d="M12 4v11M7 10l5 5 5-5M4.5 19.5h15"/>',
+    wrench: '<path d="M14.5 6.5a4 4 0 0 0 5 5L12 19a2.1 2.1 0 0 1-3-3l7.5-7.5a4 4 0 0 1-2-2Z"/>',
+    send: '<path d="M21 3 10 14M21 3l-7 18-4-7-7-4Z"/>',
+    door: '<path d="M5 20.5V4a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 .5.5v16.5M3 20.5h18"/><circle cx="15" cy="12.5" r=".8" fill="currentColor"/>',
+  };
+  function icon(name, cls) {
+    return `<svg class="ic ${cls || ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || ""}</svg>`;
+  }
+
+  // IIT Bombay emblem stand-in (the real logo is an image mask in Figma 238:3457)
+  const logo = `<svg class="brand-mark" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><circle cx="20" cy="20" r="17"/><circle cx="20" cy="20" r="11"/>${Array.from({ length: 16 }, (_, i) => { const a = (i / 16) * Math.PI * 2; return `<line x1="${20 + Math.cos(a) * 17}" y1="${20 + Math.sin(a) * 17}" x2="${20 + Math.cos(a) * 19.5}" y2="${20 + Math.sin(a) * 19.5}"/>`; }).join("")}<path d="M14 25h12M15 25v-7M20 25v-9M25 25v-7M13 18h14l-7-4Z"/></svg>`;
+
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const kv = (label, value, cls) => `<dl class="kv ${cls || ""}"><dt>${esc(label)}</dt><dd>${value ?? "—"}</dd></dl>`;
+  const phoneMask = (p) => (p ? String(p).slice(0, 2) + "XXX XXXXX" : "—");   // mirrors "81XXX XXXXX" in Figma
+
+  /* ---------- Overlays: one layer at a time keeps focus handling simple ---------- */
+  let layer = null;
+  let lastFocus = null;
+
+  function open(html, { kind = "modal", onClose } = {}) {
+    close(true);
+    lastFocus = document.activeElement;
+    const wrap = document.createElement("div");
+    wrap.className = "layer";
+    if (kind === "drawer") wrap.innerHTML = `<div class="drawer-scrim" data-act="closeLayer"></div><aside class="drawer" role="dialog" aria-modal="true">${html}</aside>`;
+    else wrap.innerHTML = `<div class="scrim" data-act="closeLayer" data-self-only="1"><div class="modal ${kind === "wide" ? "modal-wide" : ""}" role="dialog" aria-modal="true">${html}</div></div>`;
+    document.body.appendChild(wrap);
+    layer = { el: wrap, onClose };
+    const f = wrap.querySelector("[autofocus], input, select, textarea, button:not([data-act=closeLayer])");
+    if (f) f.focus();
+    return wrap;
+  }
+  function replace(html) { if (!layer) return; const box = layer.el.querySelector(".modal, .drawer"); box.innerHTML = html; }
+  function close(silent) {
+    if (!layer) return;
+    const { el, onClose } = layer; layer = null; el.remove();
+    if (onClose && !silent) onClose();
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  const isOpen = () => !!layer;
+
+  function toast(msg, action) {
+    let wrap = document.querySelector(".toast-wrap");
+    if (!wrap) { wrap = document.createElement("div"); wrap.className = "toast-wrap"; wrap.setAttribute("role", "status"); document.body.appendChild(wrap); }
+    const t = document.createElement("div");
+    t.className = "toast";
+    t.innerHTML = `<span>${esc(msg)}</span>` + (action ? `<button class="link" data-act="${action.act}" ${action.data || ""}>${esc(action.label)}</button>` : "");
+    wrap.appendChild(t);
+    setTimeout(() => t.remove(), action ? 6000 : 3200);
+  }
+
+  function csv(rows, cols) {
+    const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    return [cols.map((c) => q(c.label)).join(","), ...rows.map((r) => cols.map((c) => q(r[c.key])).join(","))].join("\n");
+  }
+  function download(name, text) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], { type: "text/csv" }));
+    a.download = name; a.click(); URL.revokeObjectURL(a.href);
+  }
+
+  return { icon, logo, esc, kv, phoneMask, open, replace, close, isOpen, toast, csv, download };
+})();
+
+</script>
+  <script>
+/* ==========================================================================
+   Dashboard — Figma 238:3313 (+ Updates panel 301:1609 placed to its right)
+   ========================================================================== */
+window.HMS = window.HMS || {};
+HMS.views = HMS.views || {};
+
+HMS.views.dashboard = (function () {
+  const { icon, esc } = HMS.ui;
+  const D = HMS.date;
+  const S = HMS.store.sel;
+
+  function datePills(day) {
+    const [y, m, d] = day.split("-").map(Number);
+    const days = new Date(y, m, 0).getDate();
+    const opt = (v, cur, label) => `<option value="${v}" ${v === cur ? "selected" : ""}>${label}</option>`;
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return `<div class="pills" role="group" aria-label="Date shown">
+      <label class="pill-select"><span class="sr-only">Day</span><select data-on-change="setDatePart" data-part="d">${Array.from({ length: days }, (_, i) => opt(i + 1, d, "Day " + (i + 1))).join("")}</select>${icon("caretDown")}</label>
+      <label class="pill-select"><span class="sr-only">Month</span><select data-on-change="setDatePart" data-part="m">${months.map((n, i) => opt(i + 1, m, n)).join("")}</select>${icon("caretDown")}</label>
+      <label class="pill-select"><span class="sr-only">Year</span><select data-on-change="setDatePart" data-part="y">${[2025, 2026, 2027].map((v) => opt(v, y, v)).join("")}</select>${icon("caretDown")}</label>
+    </div>`;
+  }
+
+  function stat(label, value, unit, go, small) {
+    return `<div class="stat ${small ? "stat-sm" : ""}">
+      <div class="stat-label">${label}</div>
+      <div class="stat-value"><b>${value}</b>${unit ? `<small>${unit}</small>` : ""}</div>
+      <button class="stat-link" data-act="go" data-href="${go}" aria-label="${label} details">Details ${icon("caretRight")}</button>
+    </div>`;
+  }
+
+  function guestRows(day, q, sortAsc) {
+    let list = S.inHouseBookings(day);
+    if (q) list = list.filter((b) => (b.title + " " + b.requestedBy + " " + S.bookingRooms(b.id).join(" ")).toLowerCase().includes(q.toLowerCase()));
+    list.sort((a, b) => (sortAsc ? a.from.localeCompare(b.from) : b.from.localeCompare(a.from)));
+    if (!list.length) return `<div class="empty"><strong>No guests on ${D.fmt(day)}</strong>Accepted requests appear here once rooms are allotted.</div>`;
+    return list.map((b) => {
+      const rooms = S.bookingRooms(b.id);
+      const roomLabel = rooms.length > 1 ? `${rooms[0]}- ${rooms[rooms.length - 1]}` : rooms[0] || "—";
+      const tag = b.to === day ? `<span class="badge badge-warn tag">Leaves today</span>` : b.from === day ? `<span class="badge badge-teal tag">Arrives today</span>` : "";
+      return `<div class="guest-row">
+        <div class="who"><div class="name">${esc(b.title)}</div><div class="meta">${roomLabel}     |     ${D.fmt(b.from)} - ${D.fmt(b.to)}</div></div>
+        ${tag}
+        <button class="icon-btn" data-act="editBooking" data-id="${b.id}" aria-label="Edit ${esc(b.title)}">${icon("pencil")}</button>
+      </div>`;
+    }).join("");
+  }
+
+  function updateCard(u) {
+    const done = u.state !== "open";
+    const dates = u.to ? `${D.fmtShort(u.from).replace(/ \d{4}$/, "")} — ${D.fmtShort(u.to)}` : D.fmtShort(u.from);
+    const [yes, no] = { booking: ["Accept", "Reject"], extension: ["Approve", "Decline"], leave: ["Acknowledge", "Dismiss"], maintenance: ["Mark under repair", "Dismiss"] }[u.type] || ["Accept", "Reject"];
+    return `<article class="update ${done ? "done" : ""}">
+      <h3>${esc(u.title)}</h3>
+      <p>${esc(u.body)}</p>
+      <div class="when num">${dates}</div>
+      ${done
+        ? `<span class="resolved">${icon("check")} ${u.state === "accepted" ? "Done" : u.state === "sent" ? "Sent" : "Dismissed"}</span>`
+        : `<div class="row">
+            <button class="btn btn-secondary" data-act="resolveUpdate" data-id="${u.id}" data-ok="0">${icon("x")} ${no}</button>
+            <button class="btn btn-primary" data-act="resolveUpdate" data-id="${u.id}" data-ok="1">${icon("check")} ${yes}</button>
+          </div>`}
+    </article>`;
+  }
+
+  function updatesPanel(q) {
+    let list = S.updates().filter((u) => u.type !== "sent");
+    if (q) list = list.filter((u) => (u.title + u.body).toLowerCase().includes(q.toLowerCase()));
+    list = [...list.filter((u) => u.state === "open"), ...list.filter((u) => u.state !== "open")];
+    return list.length ? list.map(updateCard).join("") : `<div class="empty"><strong>Nothing needs you</strong>New requests from students, departments and HCU land here.</div>`;
+  }
+
+  function render(ctx) {
+    const day = ctx.ui.day;
+    const st = S.stats(day);
+    const hostel = S.settings().hostel;
+    return `<div class="dash" data-figma-node="238:3313">
+      <section aria-labelledby="dash-title">
+        <div class="dash-head"><h1 id="dash-title">${esc(hostel)},</h1>${datePills(day)}</div>
+        <div class="stats">
+          ${stat("Total Rooms", st.total, "Rooms", "#/map")}
+          ${stat("Empty Rooms", st.empty, "Rooms", "#/map?show=empty")}
+          ${stat("Occupied Rooms", st.occupied, "Rooms", "#/residents")}
+          ${stat("Guests", st.guests, "", "#/residents?tab=Guests", true)}
+          ${stat("Today Check In", st.checkIns, "Rooms", "#/residents?tab=Guests&arriving=1", true)}
+          ${stat("Today Check Out", st.checkOuts, "Rooms", "#/residents?tab=Guests&leaving=1", true)}
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <span class="panel-icon">${icon("building")}</span><h2>Guests</h2>
+            <div class="panel-tools">
+              <button class="icon-btn" data-act="toggleGuestSearch" aria-label="Search guests">${icon("search")}</button>
+              <button class="icon-btn" data-act="toggleGuestSort" aria-label="Sort by arrival">${icon("sort")}</button>
+            </div>
+          </div>
+          ${ctx.ui.guestSearchOpen ? `<div class="panel-search search">${icon("search")}<input class="input" type="search" placeholder="Search guests or rooms" value="${esc(ctx.ui.guestQ)}" data-on-input="guestQ" autofocus></div>` : ""}
+          <div class="guest-list" id="guest-list">${guestRows(day, ctx.ui.guestQ, ctx.ui.guestSortAsc)}</div>
+        </div>
+      </section>
+      <aside class="updates" aria-label="Updates" data-figma-node="301:1609">
+        <div class="updates-search search">${icon("search")}<input class="input" type="search" placeholder="Search" value="${esc(ctx.ui.updatesQ)}" data-on-input="updatesQ" aria-label="Search updates"></div>
+        <div class="panel">
+          <div class="panel-head"><span class="panel-icon">${icon("list")}</span><h2 style="font-weight:500;font-size:16px;color:var(--body)">Updates</h2></div>
+          <div class="updates-list" id="updates-list">${updatesPanel(ctx.ui.updatesQ)}</div>
+        </div>
+      </aside>
+    </div>`;
+  }
+
+  return { render, updateCard, updatesPanel, guestRows };
+})();
+
+</script>
+  <script>
+/* ==========================================================================
+   Residents — Figma 238:6730 (tabs), 238:4052 (filter builder + custom tab)
+   Resident profile — Figma 238:7204, refined in 293:10380
+   ========================================================================== */
+window.HMS = window.HMS || {};
+HMS.views = HMS.views || {};
+
+HMS.views.residents = (function () {
+  const { icon, esc, kv, phoneMask } = HMS.ui;
+  const D = HMS.date;
+  const S = HMS.store.sel;
+
+  const BASE_TABS = ["Bachelors", "Masters", "PhD", "Guests"];
+  const COLS = {
+    resident: [
+      { key: "room", label: "Room No." }, { key: "roll", label: "Roll Number" }, { key: "name", label: "Name" },
+      { key: "dept", label: "Department" }, { key: "program", label: "Program" }, { key: "contact", label: "Contact", fmt: phoneMask },
+    ],
+    guest: [
+      { key: "room", label: "Room Alloted" }, { key: "name", label: "Name" }, { key: "arrival", label: "Arrival Date", fmt: D.fmt },
+      { key: "departure", label: "Departure Date", fmt: D.fmt }, { key: "requestedBy", label: "Requested by" }, { key: "contact", label: "Contact", fmt: phoneMask },
+    ],
+  };
+  const OPS = { contains: "Contains", is: "Is", not: "Is not", starts: "Starts with" };
+
+  function applyFilters(rows, filters) {
+    return rows.filter((r) => filters.every((f) => {
+      if (!f.col || f.val === "") return true;
+      const v = String(r[f.col] ?? "").toLowerCase(), q = String(f.val).toLowerCase();
+      return f.op === "is" ? v === q : f.op === "not" ? v !== q : f.op === "starts" ? v.startsWith(q) : v.includes(q);
+    }));
+  }
+
+  function rowsFor(ctx) {
+    const u = ctx.ui.res;
+    const custom = S.customTabs().find((t) => t.id === u.tab);
+    const base = custom ? custom.base : u.tab;
+    let rows = S.residentRows(base, ctx.ui.day);
+    if (base === "Guests" && ctx.query.arriving) rows = rows.filter((r) => r.arrival === ctx.ui.day);
+    if (base === "Guests" && ctx.query.leaving) rows = rows.filter((r) => r.departure === ctx.ui.day);
+    rows = applyFilters(rows, [...(custom ? custom.filters : []), ...u.filters]);
+    if (u.q) { const q = u.q.toLowerCase(); rows = rows.filter((r) => Object.values(r).some((v) => String(v).toLowerCase().includes(q))); }
+    const k = u.sort.key, dir = u.sort.dir;
+    rows.sort((a, b) => String(a[k]).localeCompare(String(b[k]), undefined, { numeric: true }) * dir);
+    return { rows, base, cols: base === "Guests" ? COLS.guest : COLS.resident };
+  }
+
+  function filterPop(ctx, cols) {
+    const f = ctx.ui.res.filters.length ? ctx.ui.res.filters : [{ col: "", op: "contains", val: "" }];
+    return `<div class="popover filter-pop" role="dialog" aria-label="Filter residents">
+      <header><span>Where:</span><button class="link" data-act="clearFilters" style="font-size:10px">clear filters</button></header>
+      <div class="filter-rows">
+        ${f.map((r, i) => `<div class="filter-row">
+          <select aria-label="Column" data-on-change="filterEdit" data-i="${i}" data-k="col"><option value="">Select Column</option>${cols.map((c) => `<option value="${c.key}" ${c.key === r.col ? "selected" : ""}>${c.label}</option>`).join("")}</select>
+          <select aria-label="Condition" data-on-change="filterEdit" data-i="${i}" data-k="op">${Object.entries(OPS).map(([k, l]) => `<option value="${k}" ${k === r.op ? "selected" : ""}>${l}</option>`).join("")}</select>
+          <input aria-label="Value" placeholder="Value" value="${esc(r.val)}" data-on-input="filterEdit" data-i="${i}" data-k="val">
+          <button data-act="filterRemove" data-i="${i}" aria-label="Remove filter">${icon("x")}</button>
+        </div>`).join("")}
+      </div>
+      <button class="filter-add" data-act="filterAdd">Add filter +</button>
+      <div class="filter-foot"><button class="btn btn-secondary" data-act="saveTabPrompt">Save as tab</button><button class="btn btn-primary" data-act="closeFilter">Done</button></div>
+    </div>`;
+  }
+
+  function table(ctx) {
+    const u = ctx.ui.res;
+    const { rows, cols } = rowsFor(ctx);
+    const per = u.perPage === "All" ? rows.length || 1 : Number(u.perPage);
+    const pages = Math.max(1, Math.ceil(rows.length / per));
+    const page = Math.min(u.page, pages);
+    const slice = rows.slice((page - 1) * per, page * per);
+    if (!rows.length) return `<div class="empty"><strong>No one matches</strong>Clear the search or filters to see everyone.</div>`;
+    let lastFloor = null;
+    const body = slice.map((r) => {
+      const fl = HMS.floorplan.parseRoom(r.room).floor;
+      const brk = u.sort.key === "room" && lastFloor !== null && fl !== lastFloor ? `<tr class="floor-break" aria-hidden="true"><td colspan="${cols.length + 1}"></td></tr>` : "";
+      lastFloor = fl;
+      const target = r.kind === "resident" ? `#/residents/${r.id}` : `#/map?floor=${fl}&room=${r.room}`;
+      return `${brk}<tr>
+        ${cols.map((c) => `<td>${esc(c.fmt ? c.fmt(r[c.key]) : r[c.key])}</td>`).join("")}
+        <td><div class="actions">
+          <button data-act="go" data-href="${target}" aria-label="View ${esc(r.name)}">${icon("eye")}</button>
+          <button data-act="${r.kind === "resident" ? "editResident" : "editGuestStay"}" data-id="${r.id}" aria-label="Edit ${esc(r.name)}">${icon("pencil")}</button>
+        </div></td></tr>`;
+    }).join("");
+    return `<div class="table-wrap"><table class="data">
+      <thead><tr>${cols.map((c) => `<th scope="col"><button class="sort-th" data-act="sortBy" data-key="${c.key}">${c.label}${u.sort.key === c.key ? icon(u.sort.dir > 0 ? "caretDown" : "caretUp") : ""}</button></th>`).join("")}<th><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>${body}</tbody></table></div>
+      <div class="pager"><span class="num">${(page - 1) * per + 1}–${Math.min(page * per, rows.length)} of ${rows.length}</span>
+        ${pages > 1 ? `<div class="row"><button class="btn btn-secondary" data-act="page" data-d="-1" ${page <= 1 ? "disabled" : ""}>Previous</button><button class="btn btn-secondary" data-act="page" data-d="1" ${page >= pages ? "disabled" : ""}>Next</button></div>` : ""}
+      </div>`;
+  }
+
+  function render(ctx) {
+    const u = ctx.ui.res;
+    const { cols } = rowsFor(ctx);
+    const custom = S.customTabs();
+    const nFilters = u.filters.filter((f) => f.col && f.val !== "").length;
+    const note = ctx.query.arriving ? "Showing guests arriving on " + D.fmt(ctx.ui.day) : ctx.query.leaving ? "Showing guests leaving on " + D.fmt(ctx.ui.day) : "";
+    return `<section data-figma-node="238:6730">
+      <div class="page-head"><h1 class="page-title">Residents</h1>
+        <button class="btn btn-secondary" data-act="exportResidents">${icon("download")} Copy as CSV</button></div>
+      <div class="toolbar">
+        <div class="toolbar-left" style="position:relative">
+          <button class="filter-btn" data-act="toggleFilter" aria-expanded="${u.filterOpen}">Filter ${nFilters ? `<span class="count">${nFilters}</span>` : ""}${icon("funnel")}</button>
+          ${u.filterOpen ? filterPop(ctx, cols) : ""}
+          ${note ? `<span class="badge badge-teal">${note}</span> <button class="link" data-act="go" data-href="#/residents?tab=Guests" style="font-size:12px">Show all guests</button>` : ""}
+        </div>
+        <div class="toolbar-right">
+          <label class="rows-label" for="perpage">Rows per page</label>
+          <span class="mini-select"><select id="perpage" data-on-change="perPage">${["25", "50", "100", "All"].map((v) => `<option ${v === u.perPage ? "selected" : ""}>${v}</option>`).join("")}</select>${icon("caretDown")}</span>
+          <span class="search">${icon("search")}<input class="input" type="search" placeholder="Search" value="${esc(u.q)}" data-on-input="resQ" aria-label="Search residents"></span>
+        </div>
+      </div>
+      <div class="tabs" role="tablist">
+        ${BASE_TABS.map((t) => `<button class="tab" role="tab" aria-selected="${u.tab === t}" data-act="resTab" data-tab="${t}">${t}</button>`).join("")}
+        ${custom.map((t) => `<button class="tab" role="tab" aria-selected="${u.tab === t.id}" data-act="resTab" data-tab="${t.id}">${esc(t.name)}<span class="tab-x" data-act="removeTab" data-id="${t.id}" aria-label="Remove tab">${icon("x")}</span></button>`).join("")}
+        <button class="tab tab-add" data-act="saveTabPrompt" aria-label="Save current view as a tab">+</button>
+      </div>
+      <div id="res-table">${table(ctx)}</div>
+    </section>`;
+  }
+
+  /* ------------------------------ Profile ------------------------------ */
+  function profile(ctx, id) {
+    const r = S.resident(id);
+    if (!r) return `<div class="empty"><strong>Resident not found</strong><button class="link" data-act="go" data-href="#/residents">Back to residents</button></div>`;
+    const status = r.room ? `<span class="badge badge-info">Occupied</span>` : `<span class="badge badge-grey">Vacated</span>`;
+    const roommates = r.room ? S.occupants(r.room, ctx.ui.day).filter((o) => o.person && o.person.id !== r.id) : [];
+    const hist = r.history.map((h, i) => h.type === "shift"
+      ? `<li class="marker">${esc(h.note)}</li>`
+      : `<li class="${i === 0 && h.type === "allotted" && r.room ? "current" : ""}">${h.type === "allotted" ? "Allotted" : "Vacated"} ${h.hostel ? esc(h.hostel) + " – " : ""}${esc(h.room)}<small>${D.fmt(h.date)} onwards</small></li>`).join("");
+    return `<section data-figma-node="293:10380">
+      <button class="back" data-act="back">${icon("caretLeft")} Residents</button>
+      <div class="page-head">
+        <h1 class="page-title">Resident<span class="sep">|</span>${r.room ? esc(r.room) : "No room"}</h1>
+        <div class="profile-actions">
+          <span style="font-size:12px;align-self:center">Room Status:</span> ${status}
+          <button class="btn btn-secondary" data-act="editResident" data-id="${r.id}">${icon("pencil")} Edit</button>
+          ${r.room ? `<button class="btn btn-secondary" data-act="go" data-href="#/map?floor=${HMS.floorplan.parseRoom(r.room).floor}&room=${r.room}">${icon("door")} Show on map</button>
+          <button class="btn btn-danger" data-act="vacateResident" data-id="${r.id}">Mark vacated</button>` : ""}
+        </div>
+      </div>
+      <div class="profile">
+        <div class="profile-cards">
+          <div class="pcard"><h2>Personal Details</h2><div class="pgrid pgrid-3">
+            ${kv("Name", esc(r.name))}${kv("Roll Number", esc(r.roll))}${kv("Email", esc(r.email))}
+            ${kv("Mobile", esc(phoneMask(r.phone)))}${kv("Date of Birth", D.fmt(r.dob))}${kv("Gender", esc(r.gender))}
+            ${kv("Nationality", esc(r.nationality))}${kv("Joining Date", D.fmt(r.joined))}${kv("Hostel / Room No.", "H17 – " + esc(r.room || "—"))}
+            <div style="grid-column:1/-1">${kv("Permanent Address", esc(r.homeAddress))}</div>
+          </div></div>
+          <div class="pcard"><h2>Academic Details</h2><div class="pgrid pgrid-3">
+            ${kv("Programme", esc(r.degree) + " · " + esc(r.programGroup))}${kv("Department", esc(r.dept))}${kv("Current Semester", r.semester + (r.semester === 1 ? "st" : r.semester === 2 ? "nd" : r.semester === 3 ? "rd" : "th") + " semester")}
+            ${kv("Faculty Advisor", esc(r.advisor.name))}${kv("Mentor", esc(r.mentor.name))}${kv("Expected exit", D.fmt(r.expectedExit))}
+          </div></div>
+          <div class="pcard"><h2>People to contact</h2><div class="pgrid">
+            ${kv("Local Guardian · " + esc(r.guardian.relation), esc(r.guardian.name))}${kv("Contact Number", esc(phoneMask(r.guardian.phone)))}
+            ${kv("Roommate", roommates.length ? roommates.map((o) => esc(o.person.name)).join(", ") : "Single occupancy")}${kv("Contact Number", roommates[0] ? esc(phoneMask(roommates[0].person.phone || roommates[0].person.contact)) : "—")}
+            ${kv("Emergency Contact No. 1", esc(phoneMask(r.emergency[0])))}${kv("Emergency Contact No. 2", esc(phoneMask(r.emergency[1])))}
+          </div></div>
+          <div class="pcard"><h2>Medical Details</h2><div class="pgrid">${kv("Blood Group", esc(r.blood))}</div></div>
+          <div class="pcard"><h2>Remarks</h2>
+            ${r.remarks.length ? `<ul style="margin:0 0 12px;padding-left:18px;font-size:13px;line-height:1.5">${r.remarks.map((m) => `<li>${esc(m.text)} <span class="muted" style="font-size:11px">· ${D.fmt(m.date)}, ${esc(m.by)}</span></li>`).join("")}</ul>` : `<p class="muted" style="font-size:12px;margin:0 0 12px">No remarks yet. Notes you add here replace the side Excel sheets.</p>`}
+            <div style="display:flex;gap:8px"><input class="input" style="flex:1" placeholder="Add a remark" id="remark-input"><button class="btn btn-primary" data-act="addRemark" data-id="${r.id}">Add remark</button></div>
+          </div>
+        </div>
+        <aside class="history" aria-label="Occupancy history"><h2>Occupancy History</h2><ol>${hist || `<li>No history yet</li>`}</ol></aside>
+      </div>
+    </section>`;
+  }
+
+  return { render, profile, table, rowsFor, COLS };
+})();
+
+</script>
+  <script>
+/* ==========================================================================
+   Bookings (page title "Requests") — Figma 238:4593 (All), 238:4993 (Student)
+   Group requests carry the teal right edge. Book dialog — Figma 306:2388.
+   ========================================================================== */
+window.HMS = window.HMS || {};
+HMS.views = HMS.views || {};
+
+HMS.views.bookings = (function () {
+  const { icon, esc, kv, phoneMask } = HMS.ui;
+  const D = HMS.date;
+  const S = HMS.store.sel;
+
+  const TABS = [
+    { id: "all", label: "All", test: (b) => b.status === "pending" || b.status === "accepted" },
+    { id: "student", label: "Student Requests", test: (b) => b.source === "student" && (b.status === "pending" || b.status === "accepted") },
+    { id: "group", label: "Department & HCU", test: (b) => b.source !== "student" && (b.status === "pending" || b.status === "accepted") },
+    { id: "allotted", label: "Allotted", test: (b) => b.status === "allotted" },
+    { id: "past", label: "Past Requests", test: (b) => b.status === "completed" || b.status === "rejected" },
+  ];
+  const SOURCE = { student: "Student", department: "Department", hcu: "HCU Office", "hall-manager": "Hall Manager" };
+  const STATUS = { pending: ["badge-warn", "Waiting for you"], accepted: ["badge-teal", "Needs room"], allotted: ["badge-teal", "Allotted"], completed: ["badge-grey", "Completed"], rejected: ["badge-danger", "Rejected"] };
+
+  function card(b) {
+    const group = b.kind === "group";
+    const [cls, label] = STATUS[b.status];
+    const days = D.days(b.from, b.to) + 1;
+    const f1 = group ? kv("Number of Guests", /^\d+ /.test(b.title) ? esc(b.title) : `${b.count} · ${esc(b.title)}`) : kv("Name", esc(b.requestedBy));
+    const f5 = group ? kv("Requested by", esc(b.requestedBy)) : kv("Contact Number", esc(phoneMask(b.contact)));
+    const primary = b.status === "pending"
+      ? `<button class="btn btn-primary" data-act="acceptBooking" data-id="${b.id}">${icon("check")} Accept</button>`
+      : b.status === "accepted"
+        ? `<button class="btn btn-primary" data-act="allotFromBooking" data-id="${b.id}">${icon("door")} Allot rooms</button>`
+        : "";
+    return `<article class="req ${group ? "group" : ""}">
+      <div class="req-kind">${SOURCE[b.source] || ""}${group ? " · Group" : ""}</div>
+      <span class="status badge ${cls}">${label}</span>
+      <div class="req-fields">
+        ${f1}${kv("Days", days)}
+        ${kv("From", D.fmt(b.from))}${kv("To", D.fmt(b.to))}
+        ${f5}${kv("Requested on", D.fmt(b.requestedOn))}
+      </div>
+      <div class="row">
+        <button class="btn btn-secondary" data-act="viewBooking" data-id="${b.id}">${icon("eye")} View</button>
+        ${primary}
+      </div>
+    </article>`;
+  }
+
+  function render(ctx) {
+    const u = ctx.ui.book;
+    const tab = TABS.find((t) => t.id === u.tab) || TABS[0];
+    let list = S.bookings().filter(tab.test);
+    if (u.q) { const q = u.q.toLowerCase(); list = list.filter((b) => (b.title + b.requestedBy + b.comments).toLowerCase().includes(q)); }
+    list.sort((a, b) => (u.sortAsc ? 1 : -1) * a.requestedOn.localeCompare(b.requestedOn));
+    const counts = Object.fromEntries(TABS.map((t) => [t.id, S.bookings().filter(t.test).length]));
+    return `<section data-figma-node="238:4593">
+      <div class="page-head">
+        <h1 class="page-title">Requests</h1>
+        <div class="toolbar-right">
+          ${u.searchOpen ? `<span class="search">${icon("search")}<input class="input" type="search" placeholder="Search requests" value="${esc(u.q)}" data-on-input="bookQ" autofocus></span>` : `<button class="icon-btn" data-act="toggleBookSearch" aria-label="Search requests">${icon("search")}</button>`}
+          <button class="icon-btn" data-act="toggleBookSort" aria-label="Sort by request date">${icon("sort")}</button>
+          <button class="btn btn-primary btn-lg" data-act="newBooking">${icon("plus")} Book guests</button>
+        </div>
+      </div>
+      <div class="tabs" role="tablist">
+        ${TABS.map((t) => `<button class="tab" role="tab" aria-selected="${t.id === tab.id}" data-act="bookTab" data-tab="${t.id}">${t.label} <span class="muted">${counts[t.id]}</span></button>`).join("")}
+      </div>
+      ${list.length ? `<div class="req-grid">${list.map(card).join("")}</div>` : `<div class="empty"><strong>No requests here</strong>${tab.id === "all" ? "New requests from students, departments and HCU will appear here." : "Switch tabs to see other requests."}</div>`}
+    </section>`;
+  }
+
+  function drawer(id) {
+    const b = S.booking(id);
+    const guests = b.guestIds.map((gid) => S.guest(gid));
+    const stays = S.bookingStays(b.id);
+    const roomOf = (gid) => (stays.find((s) => s.personId === gid) || {}).room;
+    const [cls, label] = STATUS[b.status];
+    return `<div class="drawer-head">
+        <div><div class="req-kind">${SOURCE[b.source] || ""} · ${esc(b.id)}</div><h2 class="modal-title" style="padding:0">${esc(b.title)}</h2></div>
+        <button class="icon-btn" data-act="closeLayer" aria-label="Close">${icon("x")}</button>
+      </div>
+      <div class="drawer-body">
+        <p><span class="badge ${cls}">${label}</span></p>
+        <div class="pgrid" style="margin:14px 0 18px">
+          ${kv("Requested by", esc(b.requestedBy) + (b.requesterRoll ? " · " + esc(b.requesterRoll) : ""))}${kv("Requested on", D.fmt(b.requestedOn))}
+          ${kv("From", D.fmt(b.from))}${kv("To", D.fmt(b.to))}
+          ${kv("Days", D.days(b.from, b.to) + 1)}${kv("Contact Number", esc(phoneMask(b.contact)))}
+        </div>
+        ${kv("Comments", esc(b.comments || "—"), "comments")}
+        ${b.rejectReason ? `<div class="warn-line">Rejected: ${esc(b.rejectReason)}</div>` : ""}
+        <h3 style="font-size:13px;margin:22px 0 8px">Guests (${guests.length})</h3>
+        ${guests.length ? `<table class="data"><thead><tr><th>Name</th><th>Relation</th><th>Room</th></tr></thead><tbody>
+          ${guests.map((g) => `<tr><td>${esc(g.name)}</td><td style="font-weight:400">${esc(g.relation || "—")}</td><td>${roomOf(g.id) ? `<button class="link" data-act="go" data-href="#/map?floor=${HMS.floorplan.parseRoom(roomOf(g.id)).floor}&room=${roomOf(g.id)}">${roomOf(g.id)}</button>` : `<span class="muted">Not allotted</span>`}</td></tr>`).join("")}
+        </tbody></table>` : `<p class="muted" style="font-size:12px">No guest list attached.</p>`}
+      </div>
+      <div class="drawer-foot">
+        ${b.status === "pending" ? `<button class="btn btn-danger btn-lg" data-act="rejectBooking" data-id="${b.id}">${icon("x")} Reject</button><button class="btn btn-primary btn-lg" data-act="acceptBooking" data-id="${b.id}">${icon("check")} Accept</button>` : ""}
+        ${b.status === "accepted" ? `<button class="btn btn-primary btn-lg" data-act="allotFromBooking" data-id="${b.id}">${icon("door")} Allot rooms on map</button>` : ""}
+        ${b.status === "allotted" ? `<button class="btn btn-secondary btn-lg" data-act="editBooking" data-id="${b.id}">${icon("pencil")} Change dates</button>` : ""}
+      </div>`;
+  }
+
+  /** Book dialog (306:2388): Book / Notify tabs, "Add Guest", list with checkboxes, Request */
+  function bookDialog(draft) {
+    return `<div class="modal-head"><div class="tabs" role="tablist">
+        <button class="tab" role="tab" aria-selected="${draft.tab === "book"}" data-act="bookDraftTab" data-tab="book">Book</button>
+        <button class="tab" role="tab" aria-selected="${draft.tab === "notify"}" data-act="bookDraftTab" data-tab="notify">Notify</button>
+      </div></div>
+      <div class="modal-body">
+      ${draft.tab === "book" ? `
+        <div class="add-resident">${icon("plus")}<input placeholder="Add Guest" id="draft-guest" data-on-enter="draftAddGuest" aria-label="Guest name, press Enter to add"></div>
+        <div class="pgrid" style="margin-top:14px">
+          <label class="field"><span>From</span><input class="input" type="date" id="draft-from" value="${draft.from}"></label>
+          <label class="field"><span>To</span><input class="input" type="date" id="draft-to" value="${draft.to}"></label>
+          <label class="field" style="grid-column:1/-1"><span>Comments</span><textarea class="input" id="draft-comments" rows="2" placeholder="Why they are staying, who asked">${esc(draft.comments)}</textarea></label>
+        </div>
+        <div class="cand-list">
+          ${draft.guests.length ? draft.guests.map((g, i) => `<div class="cand">
+            ${kv("Name", esc(g.name))}${kv("Days", D.days(draft.from, draft.to) + 1)}<span></span>
+            <input type="checkbox" class="checkbox check" checked data-on-change="draftToggle" data-i="${i}" aria-label="Include ${esc(g.name)}">
+          </div>`).join("") : `<div class="empty" style="padding:20px">Type a guest's name above and press Enter.</div>`}
+        </div>` : `
+        <label class="field"><span>Send to</span><select class="select-input" id="draft-notify-to"><option>HCU Office</option><option>Warden</option><option>Mess Committee</option></select></label>
+        <label class="field" style="margin-top:12px"><span>Message</span><textarea class="input" id="draft-notify-msg" rows="4" placeholder="What should they know?"></textarea></label>`}
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-secondary" data-act="closeLayer">${icon("x")} Cancel</button>
+        ${draft.tab === "book" ? `<button class="btn btn-primary" data-act="draftSubmit" ${draft.guests.filter((g) => g.on).length ? "" : "disabled"}>${icon("check")} Request</button>` : `<button class="btn btn-primary" data-act="draftNotify">${icon("send")} Send</button>`}
+      </div>`;
+  }
+
+  return { render, drawer, bookDialog, TABS };
+})();
+
+</script>
+  <script>
+/* ==========================================================================
+   Hostel Map — Figma 238:5393 (map), 238:5576 (Allot, one person),
+   238:5796 (Allot, two people), 262:6633 (Add Resident search open).
+   Occupied-room detail content comes from the older Version 1 frame 266:4130.
+   The map is date-aware: room colours reflect who is there on the chosen day.
+   ========================================================================== */
+window.HMS = window.HMS || {};
+HMS.views = HMS.views || {};
+
+HMS.views.map = (function () {
+  const { icon, esc, kv, phoneMask } = HMS.ui;
+  const D = HMS.date;
+  const S = HMS.store.sel;
+  const FP = HMS.floorplan;
+
+  const STATES = {
+    allotted: { label: "Allotted", bg: "var(--room-allotted-bg)", stroke: "var(--room-allotted-stroke)" },
+    empty: { label: "Unoccupied", bg: "var(--room-empty-bg)", stroke: "var(--room-empty-stroke)" },
+    guest: { label: "Guests", bg: "var(--room-guest-bg)", stroke: "var(--room-guest-stroke)", dash: "3 2" },
+    maintenance: { label: "Maintenance", bg: "var(--room-maint-bg)", stroke: "var(--room-maint-stroke)" },
+  };
+
+  function svg(ctx) {
+    const m = ctx.ui.map;
+    const day = ctx.ui.day;
+    const counts = { allotted: 0, empty: 0, guest: 0, maintenance: 0 };
+    const rooms = FP.SLOTS.map((s) => {
+      const no = FP.roomNo(m.floor, s.idx);
+      const st = S.roomState(no, day);
+      counts[st]++;
+      const def = STATES[st];
+      const dim = (m.wing !== "all" && s.wing !== m.wing) ? "dim" : !m.show[st] ? "hidden-state" : "";
+      const sel = m.room === no ? "selected" : "";
+      const occ = st === "allotted" || st === "guest" ? S.occupants(no, day) : [];
+      const over = occ.length > 2 ? `<circle class="flag" cx="${s.x + s.w - 4}" cy="${s.y + 4}" r="3"/>` : "";
+      const title = `Room ${no} · ${def.label}${occ.length ? " · " + occ.map((o) => o.person.name).join(", ") : ""}`;
+      const label = m.labels ? `<text x="${s.x + s.w / 2}" y="${s.y + s.h / 2 + 3}" text-anchor="middle">${s.idx}</text>` : "";
+      return `<g class="room ${dim} ${sel}" tabindex="0" role="button" aria-label="${esc(title)}" data-act="openRoom" data-room="${no}">
+        <title>${esc(title)}</title>
+        <rect x="${s.x}" y="${s.y}" width="${s.w}" height="${s.h}" rx="4.8" fill="${def.bg}" stroke="${def.stroke}" stroke-width="1" ${def.dash ? `stroke-dasharray="${def.dash}"` : ""}/>
+        ${label}${over}</g>`;
+    }).join("");
+    const blocks = FP.blocks.map((b) => `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="4.8" fill="${b.kind === "service" ? "var(--room-service-bg)" : "var(--room-common-bg)"}"><title>${b.label}</title></rect>`).join("");
+    const c = FP.courtyard;
+    return {
+      counts,
+      html: `<svg viewBox="${FP.viewBox}" role="group" aria-label="Floor ${m.floor} plan">
+        <path d="${FP.outline}" fill="var(--primary-bg)" stroke="var(--primary-cta-bg)" stroke-width="2"/>
+        <rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="10" fill="#fff" stroke="var(--primary-cta-bg)" stroke-width="2"/>
+        ${blocks}${rooms}
+      </svg>`,
+    };
+  }
+
+  function legend(ctx, counts) {
+    const m = ctx.ui.map;
+    const item = (k) => `<button class="legend-item" aria-pressed="${m.show[k]}" data-act="toggleLegend" data-k="${k}">
+      <span class="sw" style="background:${STATES[k].bg};border-color:${STATES[k].stroke};${STATES[k].dash ? "border-style:dashed" : ""}"></span>${STATES[k].label} <span class="n num">${counts[k]}</span></button>`;
+    return `<div class="map-legend">${item("allotted")}${item("empty")}${item("guest")}${item("maintenance")}
+      <span class="legend-item"><span class="sw" style="background:var(--room-service-bg);border-color:var(--room-service-bg)"></span>Service</span>
+      <span class="legend-item"><span class="sw" style="background:var(--room-common-bg);border-color:var(--room-common-bg)"></span>Stairs &amp; common</span></div>`;
+  }
+
+  function dateSelects(day) {
+    const [y, mo, d] = day.split("-").map(Number);
+    const days = new Date(y, mo, 0).getDate();
+    const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const box = (part, opts, label) => `<label class="box-select"><span class="sr-only">${label}</span><select data-on-change="setDatePart" data-part="${part}">${opts}</select>${icon("caretDown")}</label>`;
+    return `<div class="map-top">
+      ${box("d", Array.from({ length: days }, (_, i) => `<option value="${i + 1}" ${i + 1 === d ? "selected" : ""}>${String(i + 1).padStart(2, "0")}</option>`).join(""), "Day")}
+      ${box("m", months.map((n, i) => `<option value="${i + 1}" ${i + 1 === mo ? "selected" : ""}>${n}</option>`).join(""), "Month")}
+      ${box("y", [2025, 2026, 2027].map((v) => `<option ${v === y ? "selected" : ""}>${v}</option>`).join(""), "Year")}
+    </div>`;
+  }
+
+  function render(ctx) {
+    const m = ctx.ui.map;
+    const { html, counts } = svg(ctx);
+    const floors = FP.FLOORS;
+    const i = floors.indexOf(m.floor);
+    const visible = floors.slice(Math.max(0, Math.min(i - 1, floors.length - 3)), Math.max(0, Math.min(i - 1, floors.length - 3)) + 3).reverse();
+    const pendingGuests = S.unhousedGuests().length;
+    return `<section class="map-page" data-figma-node="238:5393">
+      <div>
+        ${dateSelects(ctx.ui.day)}
+        ${pendingGuests ? `<p class="note" style="margin:0 auto 14px">${pendingGuests} guest${pendingGuests > 1 ? "s" : ""} from accepted requests still need a room. Click an unoccupied room to allot.</p>` : ""}
+        <div class="map-canvas" id="map-canvas">${html}</div>
+        ${legend(ctx, counts)}
+      </div>
+      <aside class="map-side">
+        <label class="box-select"><span class="sr-only">Wing</span><select data-on-change="setWing">
+          <option value="all" ${m.wing === "all" ? "selected" : ""}>All wings</option>
+          ${FP.WINGS.map((w) => `<option value="${w}" ${m.wing === w ? "selected" : ""}>Wing ${w}</option>`).join("")}
+        </select>${icon("caretDown")}</label>
+        <div class="map-options"><input type="checkbox" class="checkbox" id="lbl" ${m.labels ? "checked" : ""} data-on-change="toggleLabels"><label for="lbl">Room numbers</label></div>
+        <nav class="floor-stepper" aria-label="Floor">
+          <button class="step" data-act="floorStep" data-d="1" aria-label="Floor up" ${i >= floors.length - 1 ? "disabled" : ""}>${icon("caretUp")}</button>
+          ${visible.map((f) => `<button class="floor-btn" aria-current="${f === m.floor}" data-act="setFloor" data-f="${f}">${f}</button>`).join("")}
+          <button class="step" data-act="floorStep" data-d="-1" aria-label="Floor down" ${i <= 0 ? "disabled" : ""}>${icon("caretDown")}</button>
+        </nav>
+      </aside>
+    </section>`;
+  }
+
+  /* --------------------------- Room dialogs --------------------------- */
+  function head(room, tab, tabs) {
+    return `<div class="modal-head"><div class="tabs" role="tablist">${tabs.map(([id, l]) => `<button class="tab" role="tab" aria-selected="${tab === id}" data-act="roomTab" data-tab="${id}">${l}</button>`).join("")}</div><div class="modal-room num">${room}</div></div>`;
+  }
+
+  function candRow(guest, booking, checked) {
+    return `<div class="cand">
+      ${booking.kind === "group" ? `<div class="cand-group">${esc(booking.title)} · ${esc(booking.requestedBy)}</div>` : ""}
+      ${kv("Name", esc(guest.name))}${kv("Days", D.days(booking.from, booking.to) + 1)}<span></span>
+      <input type="checkbox" class="checkbox check" ${checked ? "checked" : ""} data-on-change="toggleCand" data-id="${guest.id}" aria-label="Allot ${esc(guest.name)}">
+      ${kv("From", D.fmt(booking.from))}${kv("To", D.fmt(booking.to))}${kv("Comments", esc(booking.comments || "—"), "comments")}
+      ${kv("Contact Number", esc(phoneMask(guest.contact || booking.contact)))}${kv("Requested on", D.fmt(booking.requestedOn))}
+    </div>`;
+  }
+
+  /** Allot / Notify dialog for an unoccupied room (238:5576 / 238:5796) */
+  function allotDialog(ctx, d) {
+    const room = d.room;
+    let body;
+    if (d.tab === "allot") {
+      const pool = S.unhousedGuests();
+      const shown = pool.filter((p) => d.showAll || d.picked.includes(p.guest.id) || d.focusBooking === p.booking.id);
+      const rest = pool.filter((p) => !shown.includes(p));
+      const q = (d.q || "").toLowerCase();
+      const suggestions = q ? [
+        ...rest.filter((p) => p.guest.name.toLowerCase().includes(q)).map((p) => ({ act: "pickGuest", id: p.guest.id, label: p.guest.name, sub: p.booking.title + " · from " + D.fmt(p.booking.from) })),
+        ...S.raw().residents.filter((r) => !r.room && r.name.toLowerCase().includes(q)).map((r) => ({ act: "pickResident", id: r.id, label: r.name, sub: r.roll + " · no room" })),
+        { act: "pickWalkIn", id: d.q, label: `Add “${d.q}” as a new guest`, sub: "Creates a booking for today" },
+      ].slice(0, 8) : [];
+      const n = d.picked.length + (d.resident ? 1 : 0) + (d.walkIn ? 1 : 0);
+      body = `
+        <div class="add-resident">${icon("plus")}<input placeholder="Add Resident" value="${esc(d.q || "")}" data-on-input="allotQ" aria-label="Search people waiting for a room" autocomplete="off" autofocus>
+          ${suggestions.length ? `<div class="suggest" role="listbox">${suggestions.map((s) => `<button role="option" data-act="${s.act}" data-id="${esc(s.id)}"><span>${esc(s.label)}</span><small>${esc(s.sub)}</small></button>`).join("")}</div>` : ""}
+        </div>
+        ${!q && rest.length && !d.showAll ? `<p class="muted" style="font-size:11px;margin:10px 4px 0">${rest.length} more waiting · type a name, or <button class="link" data-act="showAllWaiting">show all</button></p>` : ""}
+        <div class="cand-list">
+          ${d.resident ? (() => { const r = S.resident(d.resident); return `<div class="cand">${kv("Name", esc(r.name))}${kv("Roll Number", esc(r.roll))}<span></span><input type="checkbox" class="checkbox check" checked data-act="unpickResident" aria-label="Remove">${kv("Allot from", D.fmt(ctx.ui.day))}${kv("Programme", esc(r.degree))}${kv("Department", esc(r.dept))}</div>`; })() : ""}
+          ${d.walkIn ? `<div class="cand">${kv("Name", esc(d.walkIn))}${kv("Days", `<input class="input" type="number" min="1" value="${d.walkInDays}" data-on-input="walkInDays" style="width:64px;height:24px">`)}<span></span><input type="checkbox" class="checkbox check" checked data-act="unpickWalkIn" aria-label="Remove">${kv("From", D.fmt(ctx.ui.day))}${kv("To", D.fmt(D.add(ctx.ui.day, d.walkInDays - 1)))}</div>` : ""}
+          ${shown.map((p) => candRow(p.guest, p.booking, d.picked.includes(p.guest.id))).join("")}
+          ${!shown.length && !d.resident && !d.walkIn ? `<div class="empty" style="padding:22px 10px"><strong>No one picked yet</strong>Search above for a guest from an accepted request, a resident without a room, or type a new name.</div>` : ""}
+        </div>
+        ${n > 2 ? `<div class="warn-line">That's ${n} people for one room. H17 rooms are singles; guests can share two to a room.</div>` : ""}`;
+      return `${head(room, "allot", [["allot", "Allot"], ["notify", "Notify"]])}<div class="modal-body">${body}</div>
+        <div class="modal-foot">
+          <button class="btn btn-secondary" data-act="setMaintenancePrompt" style="margin-right:auto">${icon("wrench")} Mark for repair</button>
+          <button class="btn btn-secondary" data-act="closeLayer">${icon("x")} Cancel</button>
+          <button class="btn btn-primary" data-act="confirmAllot" ${n ? "" : "disabled"}>${icon("check")} Allot Room ${room}</button>
+        </div>`;
+    }
+    return `${head(room, "notify", [["allot", "Allot"], ["notify", "Notify"]])}${notifyBody(room)}`;
+  }
+
+  function notifyBody(room) {
+    return `<div class="modal-body">
+        <label class="field"><span>Send to</span><select class="select-input" id="notify-to"><option>HCU Office</option><option>Warden</option><option>Requester</option><option>Resident</option><option>Maintenance cell</option></select></label>
+        <label class="field" style="margin-top:12px"><span>Message</span><textarea class="input" id="notify-msg" rows="4">Room ${room}: </textarea></label>
+      </div>
+      <div class="modal-foot"><button class="btn btn-secondary" data-act="closeLayer">${icon("x")} Cancel</button><button class="btn btn-primary" data-act="sendNotify" data-room="${room}">${icon("send")} Send</button></div>`;
+  }
+
+  /** Occupied room (resident or guest) — content from Version 1 panel 266:4130 */
+  function occupiedDialog(ctx, d) {
+    const room = d.room;
+    if (d.tab === "notify") return `${head(room, "notify", [["details", "Details"], ["notify", "Notify"]])}${notifyBody(room)}`;
+    const occ = S.occupants(room, ctx.ui.day);
+    const cards = occ.map(({ stay, person }) => {
+      if (stay.kind === "resident") {
+        return `<div class="occupant"><div class="req-kind">Resident · ${esc(person.roll)}</div><h3>${esc(person.name)}</h3>
+          <div class="pgrid pgrid-3">${kv("Allocation Date", D.fmt(stay.from))}${kv("Programme", esc(person.degree))}${kv("Department", esc(person.dept))}
+          ${kv("Contact Number", esc(phoneMask(person.phone)))}${kv("Faculty advisor", esc(person.advisor.name))}${kv("Local Guardian", esc(person.guardian.name))}</div>
+          ${person.remarks[0] ? `<div class="status-box">${esc(person.remarks[0].text)}</div>` : ""}
+          <div class="row" style="display:flex;gap:10px;margin-top:12px"><button class="btn btn-secondary" data-act="go" data-href="#/residents/${person.id}">${icon("eye")} Open profile</button><button class="btn btn-danger" data-act="vacateResident" data-id="${person.id}">Mark vacated</button></div></div>`;
+      }
+      const b = S.booking(person.bookingId);
+      const extending = d.extend === stay.id;
+      return `<div class="occupant"><div class="req-kind">Guest${b ? " · " + esc(b.title) : ""}</div><h3>${esc(person.name)}</h3>
+        <div class="pgrid pgrid-3">${kv("Allocation Date", D.fmt(stay.from))}${kv("Vacation Date", D.fmt(stay.to))}${kv("Days", D.days(stay.from, stay.to) + 1)}
+        ${kv("Contact Number", esc(phoneMask(person.contact || (b && b.contact))))}${kv("Requested by", esc(b ? b.requestedBy : "—"))}${kv("Comments", esc(b ? b.comments : "—"), "comments")}</div>
+        <div class="status-box">Accommodation<br>${D.fmt(stay.from)}  -  ${D.fmt(stay.to)}${stay.to < ctx.ui.day ? " · overstaying" : stay.to === ctx.ui.day ? " · leaves today" : ""}</div>
+        ${extending ? `<div style="display:flex;gap:8px;align-items:end;margin-bottom:10px"><label class="field" style="flex:1"><span>New departure date</span><input class="input" type="date" id="extend-to" value="${D.add(stay.to, 2)}" min="${stay.to}"></label><button class="btn btn-primary" data-act="confirmExtend" data-id="${stay.id}">Save</button></div>` : ""}
+        <div class="stack">
+          <button class="btn-outline-pill" data-act="extendStay" data-id="${stay.id}">Increase Accommodation</button>
+          <button class="btn-outline-pill" data-act="checkOut" data-id="${stay.id}">Check out today</button>
+        </div></div>`;
+    }).join("");
+    return `${head(room, "details", [["details", "Details"], ["notify", "Notify"]])}
+      <div class="modal-body">${cards}
+        ${occ.length === 1 && occ[0].stay.kind === "guest" ? `<button class="link" data-act="roomAddMore" style="font-size:12px">+ Add another guest to this room</button>` : ""}
+      </div>
+      <div class="modal-foot"><button class="btn btn-secondary" data-act="closeLayer">Close</button></div>`;
+  }
+
+  function maintenanceDialog(ctx, room) {
+    const m = S.maintenanceIn(room, ctx.ui.day);
+    return `<div class="modal-head"><h2 class="modal-title">Under repair</h2><div class="modal-room num">${room}</div></div>
+      <div class="modal-body"><div class="pgrid">${kv("Issue", esc(m.note))}${kv("Since", D.fmt(m.from))}${kv("Expected back", m.to ? D.fmt(m.to) : "Not set")}${kv("Reported by", esc(m.reportedBy))}</div></div>
+      <div class="modal-foot"><button class="btn btn-secondary" data-act="closeLayer">Close</button><button class="btn btn-primary" data-act="clearMaintenance" data-room="${room}">${icon("check")} Mark repaired</button></div>`;
+  }
+
+  return { render, allotDialog, occupiedDialog, maintenanceDialog, STATES };
+})();
+
+</script>
+  <script>
+/* ==========================================================================
+   Actions + Settings — NOT designed in Figma yet. These are honest stubs that
+   list what the IA (FigJam WTbfKcPH3Gop5Xp4xFDHBy) says should live here, so
+   the next pass knows the scope. Replace with real screens once designed.
+   ========================================================================== */
+window.HMS = window.HMS || {};
+HMS.views = HMS.views || {};
+
+HMS.views.actions = (function () {
+  const { icon } = HMS.ui;
+  const items = [
+    { t: "Room management", d: "Block or release rooms, change capacity, bulk mark repairs by wing.", live: false },
+    { t: "Resident management", d: "Move a resident, swap two residents, record hostel shift from another hostel.", live: false },
+    { t: "Batch operations", d: "Semester-end vacate, new-batch allotment from the HCU list, wing migration.", live: false },
+    { t: "Reports", d: "Vacant rooms, occupancy by programme, guest stays, overstays, repairs. Export for HCU.", live: false },
+    { t: "Export residents", d: "Copy the full resident list as CSV (room, roll, name, department, programme).", live: true, act: "exportAll" },
+    { t: "Reset demo data", d: "Put every room, request and resident back to the seeded state.", live: true, act: "resetDemo" },
+  ];
+  function render() {
+    return `<section data-figma-node="(not designed)">
+      <div class="page-head"><h1 class="page-title">Actions</h1></div>
+      <p class="note">This page isn't designed yet. The cards below come from the Hall Manager IA in FigJam so the scope is visible; only the last two work.</p>
+      <div class="stub-grid">${items.map((i) => `<div class="stub ${i.live ? "live" : ""}"><h3>${i.t}</h3><p>${i.d}</p>${i.live ? `<button class="btn btn-primary" data-act="${i.act}">${i.t}</button>` : `<span class="badge badge-grey">To design</span>`}</div>`).join("")}</div>
+    </section>`;
+  }
+  return { render };
+})();
+
+HMS.views.settings = (function () {
+  const S = HMS.store.sel;
+  function render() {
+    const s = S.settings();
+    return `<section data-figma-node="(not designed)">
+      <div class="page-head"><h1 class="page-title">Settings</h1></div>
+      <p class="note">Settings aren't designed yet. The language switch mirrors the En | Hi toggle seen in 293:10380; it is stored but the UI isn't translated.</p>
+      <div class="stub-grid">
+        <div class="stub live"><h3>Language</h3><p>Interface language for this Hall Manager account.</p>
+          <div class="seg" role="group" aria-label="Language"><button aria-pressed="${s.lang === "en"}" data-act="setLang" data-v="en">English</button><button aria-pressed="${s.lang === "hi"}" data-act="setLang" data-v="hi">हिन्दी</button></div></div>
+        <div class="stub"><h3>Hostel profile</h3><p>Name, wings, floor count, room capacities, warden and council contacts.</p><span class="badge badge-grey">To design</span></div>
+        <div class="stub"><h3>Notifications</h3><p>Which requests reach you by email or SMS, and daily digest time.</p><span class="badge badge-grey">To design</span></div>
+        <div class="stub"><h3>Staff access</h3><p>Who else can allot rooms (assistant HM, office staff) and what they can see.</p><span class="badge badge-grey">To design</span></div>
+      </div>
+    </section>`;
+  }
+  return { render };
+})();
+
+</script>
+  <script>
+/* ==========================================================================
+   App — shell, hash router, UI state, and every user action.
+
+   Pattern: elements declare intent with data attributes, one delegated
+   listener routes them here.
+     data-act="name"        click / Enter / Space
+     data-on-input="name"   input events
+     data-on-change="name"  change events
+     data-on-enter="name"   Enter key in an input
+   Handlers receive (el, event). Re-render is full-page but focus + caret
+   are restored, so typing in search boxes feels normal.
+   ========================================================================== */
+window.HMS = window.HMS || {};
+
+(function () {
+  const S = HMS.store.sel, A = HMS.store.act, D = HMS.date, UI = HMS.ui;
+  const { icon, esc } = UI;
+
+  /* ------------------------------ UI state ------------------------------ */
+  const ui = {
+    day: HMS.TODAY,
+    guestQ: "", guestSearchOpen: false, guestSortAsc: true, updatesQ: "",
+    res: { tab: "Bachelors", filters: [], filterOpen: false, perPage: "50", page: 1, q: "", sort: { key: "room", dir: 1 } },
+    book: { tab: "all", q: "", searchOpen: false, sortAsc: false },
+    map: { floor: 3, wing: "all", show: { allotted: true, empty: true, guest: true, maintenance: true }, room: null, labels: false, focusBooking: null },
+    pop: null, searchQ: "",
+  };
+  let dlg = null;      // current dialog state
+  let route = { path: "dashboard", id: null, query: {} };
+
+  /* ------------------------------- Router ------------------------------- */
+  const NAV = [
+    ["dashboard", "Dashboard"], ["residents", "Residents"], ["bookings", "Bookings"], ["map", "Hostel Map"], ["actions", "Actions"],
+  ];
+  function parseHash() {
+    const h = location.hash.replace(/^#\/?/, "") || "dashboard";
+    const [p, qs] = h.split("?");
+    const [path, id] = p.split("/");
+    const query = Object.fromEntries(new URLSearchParams(qs || ""));
+    return { path, id: id || null, query };
+  }
+  function onRoute() {
+    const prev = route;
+    route = parseHash();
+    const q = route.query;
+    if (route.path === "residents" && !route.id) {
+      if (q.tab) ui.res.tab = q.tab;
+      if (prev.path !== "residents" || q.tab) ui.res.page = 1;
+    }
+    if (route.path === "map") {
+      if (q.floor) ui.map.floor = Number(q.floor);
+      if (q.show === "empty") ui.map.show = { allotted: false, empty: true, guest: false, maintenance: false };
+      ui.map.room = q.room || null;
+    }
+    ui.pop = null;
+    UI.close(true); dlg = null;
+    render();
+    window.scrollTo(0, 0);
+    if (route.path === "map" && q.room) openRoom(q.room);
+  }
+  const go = (href) => { if (location.hash === href) onRoute(); else location.hash = href; };
+
+  /* ------------------------------- Render ------------------------------- */
+  function shell(inner) {
+    const open = S.updates().filter((u) => u.state === "open").length;
+    const active = route.path === "residents" && route.id ? "residents" : route.path;
+    return `<div class="shell">
+      <header class="topbar">
+        <a class="brand" href="#/dashboard">${UI.logo}<span><div class="brand-name">Hostel Management</div><div class="brand-sub">Indian Institute of Technology Bombay</div></span></a>
+        <div class="topbar-actions">
+          <button class="icon-btn" data-act="toggleSearch" aria-label="Search" aria-expanded="${ui.pop === "search"}">${icon("search")}</button>
+          <button class="icon-btn" data-act="toggleBell" aria-label="Updates, ${open} open" aria-expanded="${ui.pop === "bell"}">${icon("bell")}${open ? '<span class="dot"></span>' : ""}</button>
+          <span class="avatar" title="Hall Manager, Hostel 17">A</span>
+          ${ui.pop === "search" ? searchPop() : ""}
+          ${ui.pop === "bell" ? `<div class="popover bell-pop" role="dialog" aria-label="Updates">${HMS.views.dashboard.updatesPanel("")}</div>` : ""}
+        </div>
+      </header>
+      <aside class="sidebar">
+        <nav class="nav" aria-label="Main">${NAV.map(([p, l]) => `<a href="#/${p}" ${active === p ? 'aria-current="page"' : ""}>${l}</a>`).join("")}</nav>
+        <a class="nav-settings" href="#/settings" ${active === "settings" ? 'aria-current="page"' : ""}>${icon("gear")} Settings</a>
+      </aside>
+      <main class="main" id="main">${inner}</main>
+    </div>`;
+  }
+
+  function searchPop() {
+    const res = S.search(ui.searchQ);
+    return `<div class="popover search-pop" role="dialog" aria-label="Search">
+      <input class="input" type="search" placeholder="Name, roll number or room" value="${esc(ui.searchQ)}" data-on-input="globalSearchQ" autofocus>
+      <div class="search-results">${ui.searchQ && !res.length ? `<div class="empty" style="padding:16px">No match for “${esc(ui.searchQ)}”.</div>` : res.map((r) => `<button data-act="openSearchResult" data-type="${r.type}" data-id="${esc(r.id)}"><span>${esc(r.label)}</span><small>${esc(r.sub)}</small></button>`).join("")}</div>
+    </div>`;
+  }
+
+  function view() {
+    const ctx = { ui, query: route.query };
+    const V = HMS.views;
+    switch (route.path) {
+      case "residents": return route.id ? V.residents.profile(ctx, route.id) : V.residents.render(ctx);
+      case "bookings": return V.bookings.render(ctx);
+      case "map": return V.map.render(ctx);
+      case "actions": return V.actions.render(ctx);
+      case "settings": return V.settings.render(ctx);
+      default: return V.dashboard.render(ctx);
+    }
+  }
+
+  function focusKey(el) {
+    if (!el || !el.dataset) return null;
+    const k = el.dataset.onInput || el.dataset.onChange || el.dataset.onEnter || el.id;
+    return k ? { k, i: el.dataset.i, kk: el.dataset.k, s: el.selectionStart, e: el.selectionEnd, inLayer: !!el.closest(".layer") } : null;
+  }
+  function restoreFocus(f, root) {
+    if (!f) return;
+    const el = [...root.querySelectorAll("input, textarea, select")].find((x) => (x.dataset.onInput || x.dataset.onChange || x.dataset.onEnter || x.id) === f.k && x.dataset.i === f.i && x.dataset.k === f.kk);
+    if (el) { el.focus(); try { if (f.s != null) el.setSelectionRange(f.s, f.e); } catch (e) { /* not text */ } }
+  }
+
+  function render() {
+    const f = focusKey(document.activeElement);
+    const root = document.getElementById("app");
+    root.innerHTML = shell(view());
+    if (f && !f.inLayer) restoreFocus(f, root);
+  }
+  function renderDialog() {
+    if (!dlg) return;
+    const f = focusKey(document.activeElement);
+    const ctx = { ui, query: route.query };
+    const html = dialogHtml(ctx);
+    const kind = dlg.type === "booking" ? "drawer" : dlg.type === "occupied" || dlg.type === "allot" ? "wide" : "modal";
+    if (UI.isOpen() && dlg.rendered) UI.replace(html);
+    else { UI.open(html, { kind, onClose: () => { dlg = null; ui.map.room = null; render(); } }); dlg.rendered = true; }
+    const layer = document.querySelector(".layer");
+    if (f && f.inLayer && layer) restoreFocus(f, layer);
+  }
+  function dialogHtml(ctx) {
+    const V = HMS.views;
+    switch (dlg.type) {
+      case "allot": return V.map.allotDialog(ctx, dlg);
+      case "occupied": return V.map.occupiedDialog(ctx, dlg);
+      case "maint": return V.map.maintenanceDialog(ctx, dlg.room);
+      case "booking": return V.bookings.drawer(dlg.id);
+      case "book": return V.bookings.bookDialog(dlg);
+      case "form": return dlg.html();
+      default: return "";
+    }
+  }
+  function openDialog(state) { UI.close(true); dlg = state; renderDialog(); }
+  function closeDialog() { UI.close(true); dlg = null; render(); }
+  function form(title, fields, submitLabel, onSubmit, opts = {}) {
+    openDialog({ type: "form", onSubmit, html: () => `
+      <div class="modal-head"><h2 class="modal-title">${esc(title)}</h2></div>
+      <div class="modal-body">${opts.intro ? `<p class="muted" style="font-size:12px;margin:0 0 14px">${opts.intro}</p>` : ""}<div class="stack">${fields}</div></div>
+      <div class="modal-foot"><button class="btn btn-secondary" data-act="closeLayer">Cancel</button><button class="btn ${opts.danger ? "btn-danger" : "btn-primary"}" data-act="submitForm">${esc(submitLabel)}</button></div>` });
+  }
+
+  /* ------------------------------ Map helpers ------------------------------ */
+  function openRoom(room) {
+    const { floor } = HMS.floorplan.parseRoom(room);
+    if (ui.map.floor !== floor) { ui.map.floor = floor; }
+    ui.map.room = room;
+    render();
+    const st = S.roomState(room, ui.day);
+    if (st === "empty") {
+      const picked = [];
+      if (ui.map.focusBooking) for (const p of S.unhousedGuests()) if (p.booking.id === ui.map.focusBooking && picked.length < 2) picked.push(p.guest.id);
+      openDialog({ type: "allot", room, tab: "allot", picked, focusBooking: ui.map.focusBooking, q: "", resident: null, walkIn: null, walkInDays: 2, showAll: false });
+    } else if (st === "maintenance") openDialog({ type: "maint", room });
+    else openDialog({ type: "occupied", room, tab: "details", extend: null });
+  }
+  function setDay(part, v) {
+    let [y, m, d] = ui.day.split("-").map(Number);
+    if (part === "y") y = Number(v); if (part === "m") m = Number(v); if (part === "d") d = Number(v);
+    d = Math.min(d, new Date(y, m, 0).getDate());
+    ui.day = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  }
+
+  /* -------------------------------- Actions -------------------------------- */
+  const H = {
+    go: (el) => go(el.dataset.href),
+    back: () => history.length > 1 ? history.back() : go("#/residents"),
+    closeLayer: () => closeDialog(),
+
+    // header
+    toggleSearch: () => { ui.pop = ui.pop === "search" ? null : "search"; render(); },
+    toggleBell: () => { ui.pop = ui.pop === "bell" ? null : "bell"; render(); },
+    globalSearchQ: (el) => { ui.searchQ = el.value; render(); },
+    openSearchResult: (el) => {
+      const { type, id } = el.dataset; ui.pop = null; ui.searchQ = "";
+      if (type === "resident") go("#/residents/" + id);
+      else if (type === "room") go(`#/map?floor=${HMS.floorplan.parseRoom(id).floor}&room=${id}`);
+      else { const st = S.raw().stays.find((s) => s.personId === id); if (st) go(`#/map?floor=${HMS.floorplan.parseRoom(st.room).floor}&room=${st.room}`); else openDialog({ type: "booking", id: S.guest(id).bookingId }); }
+    },
+
+    // dashboard
+    setDatePart: (el) => { setDay(el.dataset.part, el.value); render(); },
+    toggleGuestSearch: () => { ui.guestSearchOpen = !ui.guestSearchOpen; if (!ui.guestSearchOpen) ui.guestQ = ""; render(); },
+    toggleGuestSort: () => { ui.guestSortAsc = !ui.guestSortAsc; render(); UI.toast(ui.guestSortAsc ? "Earliest arrival first" : "Latest arrival first"); },
+    guestQ: (el) => { ui.guestQ = el.value; render(); },
+    updatesQ: (el) => { ui.updatesQ = el.value; render(); },
+    resolveUpdate: (el) => {
+      const u = S.updates().find((x) => x.id === el.dataset.id); const ok = el.dataset.ok === "1";
+      A.resolveUpdate(u.id, ok);
+      if (u.type === "booking" && ok) UI.toast("Request accepted. Allot rooms from the map.", { act: "allotFromBooking", label: "Allot now", data: `data-id="${u.bookingId}"` });
+      else if (u.type === "extension" && ok) UI.toast("Stay extended to " + D.fmt(u.to));
+      else if (u.type === "maintenance" && ok) UI.toast("Room " + u.room + " marked under repair");
+      else UI.toast(ok ? "Done" : "Dismissed");
+      render();
+    },
+    editBooking: (el) => {
+      const b = S.booking(el.dataset.id);
+      form("Change dates · " + b.title, `
+        <label class="field"><span>Arrival</span><input class="input" type="date" name="from" value="${b.from}"></label>
+        <label class="field"><span>Departure</span><input class="input" type="date" name="to" value="${b.to}"></label>`, "Save dates",
+        (v) => { if (v.to < v.from) return "Departure can't be before arrival."; A.updateBookingDates(b.id, v.from, v.to); UI.toast("Dates updated for " + b.title); },
+        { intro: `Rooms ${S.bookingRooms(b.id).join(", ") || "not allotted yet"}. Changing dates updates every guest in this booking.` });
+    },
+
+    // residents
+    resTab: (el, e) => { if (e.target.closest("[data-act=removeTab]")) return; ui.res.tab = el.dataset.tab; ui.res.page = 1; ui.res.filters = []; if (route.query.tab || route.query.arriving || route.query.leaving) go("#/residents"); else render(); },
+    removeTab: (el) => { A.removeCustomTab(el.dataset.id); if (ui.res.tab === el.dataset.id) ui.res.tab = "Bachelors"; render(); },
+    toggleFilter: () => { ui.res.filterOpen = !ui.res.filterOpen; render(); },
+    closeFilter: () => { ui.res.filterOpen = false; render(); },
+    clearFilters: () => { ui.res.filters = []; ui.res.page = 1; render(); },
+    filterAdd: () => { if (!ui.res.filters.length) ui.res.filters.push({ col: "", op: "contains", val: "" }); ui.res.filters.push({ col: "", op: "contains", val: "" }); render(); },
+    filterRemove: (el) => { ui.res.filters.splice(Number(el.dataset.i), 1); render(); },
+    filterEdit: (el) => { const i = Number(el.dataset.i); if (!ui.res.filters[i]) ui.res.filters[i] = { col: "", op: "contains", val: "" }; ui.res.filters[i][el.dataset.k] = el.value; ui.res.page = 1; render(); },
+    saveTabPrompt: () => {
+      const custom = S.customTabs().find((t) => t.id === ui.res.tab);
+      const base = custom ? custom.base : ui.res.tab;
+      form("Save as a tab", `<label class="field"><span>Tab name</span><input class="input" name="name" placeholder="e.g. PhD · thesis submitted" autofocus></label>`, "Save tab",
+        (v) => { if (!v.name.trim()) return "Give the tab a name."; const t = A.saveCustomTab({ name: v.name.trim(), base, filters: ui.res.filters.filter((f) => f.col && f.val !== "") }); ui.res.tab = t.id; ui.res.filters = []; ui.res.filterOpen = false; UI.toast("Saved tab “" + t.name + "”"); },
+        { intro: `Keeps the current ${esc(base)} view${ui.res.filters.length ? " and its filters" : ""} one click away.` });
+    },
+    perPage: (el) => { ui.res.perPage = el.value; ui.res.page = 1; render(); },
+    resQ: (el) => { ui.res.q = el.value; ui.res.page = 1; render(); },
+    sortBy: (el) => { const k = el.dataset.key; ui.res.sort = { key: k, dir: ui.res.sort.key === k ? -ui.res.sort.dir : 1 }; render(); },
+    page: (el) => { ui.res.page = Math.max(1, ui.res.page + Number(el.dataset.d)); render(); },
+    exportResidents: () => { const { rows, cols } = HMS.views.residents.rowsFor({ ui, query: route.query }); copyCsv(rows, cols, rows.length + " rows"); },
+    exportAll: () => { copyCsv(S.residentRows(null, ui.day), HMS.views.residents.COLS.resident, "all residents"); },
+    editResident: (el) => {
+      const r = S.resident(el.dataset.id);
+      form("Edit · " + r.name, `
+        <label class="field"><span>Mobile</span><input class="input" name="phone" value="${esc(r.phone)}" inputmode="tel"></label>
+        <label class="field"><span>Department</span><input class="input" name="dept" value="${esc(r.dept)}"></label>
+        <label class="field"><span>Current semester</span><input class="input" name="semester" type="number" min="1" max="12" value="${r.semester}"></label>
+        <label class="field"><span>Permanent address</span><textarea class="input" name="homeAddress" rows="2">${esc(r.homeAddress)}</textarea></label>`, "Save changes",
+        (v) => { A.updateResident(r.id, { ...v, semester: Number(v.semester) }); UI.toast("Saved " + r.name); });
+    },
+    editGuestStay: (el) => { const st = S.raw().stays.find((s) => s.personId === el.dataset.id); if (st) go(`#/map?floor=${HMS.floorplan.parseRoom(st.room).floor}&room=${st.room}`); },
+    vacateResident: (el) => {
+      const r = S.resident(el.dataset.id);
+      form("Mark " + r.name + " as vacated?", `<label class="field"><span>Vacate date</span><input class="input" type="date" name="day" value="${ui.day}"></label>`, "Mark vacated",
+        (v) => { const room = r.room; A.vacateResident(r.id, v.day); UI.toast(`Room ${room} is now free from ${D.fmt(v.day)}`); },
+        { intro: `Room ${r.room} becomes unoccupied from this date and the move is added to their occupancy history.`, danger: true });
+    },
+    addRemark: (el) => { const inp = document.getElementById("remark-input"); if (!inp.value.trim()) return inp.focus(); A.addRemark(el.dataset.id, inp.value.trim()); render(); UI.toast("Remark added"); },
+
+    // bookings
+    bookTab: (el) => { ui.book.tab = el.dataset.tab; render(); },
+    toggleBookSearch: () => { ui.book.searchOpen = true; render(); },
+    bookQ: (el) => { ui.book.q = el.value; render(); },
+    toggleBookSort: () => { ui.book.sortAsc = !ui.book.sortAsc; render(); UI.toast(ui.book.sortAsc ? "Oldest requests first" : "Newest requests first"); },
+    viewBooking: (el) => openDialog({ type: "booking", id: el.dataset.id }),
+    acceptBooking: (el) => {
+      A.acceptBooking(el.dataset.id); closeDialog();
+      UI.toast("Request accepted. Rooms still need allotting.", { act: "allotFromBooking", label: "Allot now", data: `data-id="${el.dataset.id}"` });
+    },
+    rejectBooking: (el) => {
+      const b = S.booking(el.dataset.id);
+      form("Reject request from " + b.requestedBy + "?", `<label class="field"><span>Reason (sent to the requester)</span><textarea class="input" name="reason" rows="3" placeholder="e.g. No rooms free on these dates"></textarea></label>`, "Reject request",
+        (v) => { if (!v.reason.trim()) return "Add a reason so the requester knows what to change."; A.rejectBooking(b.id, v.reason.trim()); UI.toast("Request rejected"); }, { danger: true });
+    },
+    allotFromBooking: (el) => {
+      const b = S.booking(el.dataset.id);
+      ui.map.focusBooking = b.id;
+      // open the floor with the most free rooms on the arrival date
+      let best = 1, bestN = -1;
+      for (const f of HMS.floorplan.FLOORS) { const n = HMS.floorplan.SLOTS.filter((s) => S.roomState(HMS.floorplan.roomNo(f, s.idx), b.from) === "empty").length; if (n > bestN) { best = f; bestN = n; } }
+      ui.day = b.from; ui.map.show = { allotted: true, empty: true, guest: true, maintenance: true };
+      closeDialog(); go("#/map?floor=" + best);
+      UI.toast(`Showing ${D.fmt(b.from)}. Click an unoccupied room to allot ${b.title}.`);
+    },
+    newBooking: () => openDialog({ type: "book", tab: "book", guests: [], from: ui.day, to: D.add(ui.day, 2), comments: "" }),
+    bookDraftTab: (el) => { saveDraftFields(); dlg.tab = el.dataset.tab; renderDialog(); },
+    draftAddGuest: (el) => { const v = el.value.trim(); if (!v) return; saveDraftFields(); dlg.guests.push({ name: v, on: true }); el.value = ""; renderDialog(); document.getElementById("draft-guest")?.focus(); },
+    draftToggle: (el) => { dlg.guests[Number(el.dataset.i)].on = el.checked; saveDraftFields(); renderDialog(); },
+    draftSubmit: () => {
+      saveDraftFields();
+      const guests = dlg.guests.filter((g) => g.on);
+      if (dlg.to < dlg.from) return UI.toast("Departure can't be before arrival.");
+      const b = A.createBooking({ guests, from: dlg.from, to: dlg.to, comments: dlg.comments });
+      closeDialog();
+      UI.toast(`Booked ${guests.length} guest${guests.length > 1 ? "s" : ""}. Rooms still need allotting.`, { act: "allotFromBooking", label: "Allot now", data: `data-id="${b.id}"` });
+    },
+    draftNotify: () => { const to = document.getElementById("draft-notify-to").value, msg = document.getElementById("draft-notify-msg").value.trim(); if (!msg) return UI.toast("Write a message first."); A.notify(to, msg); closeDialog(); UI.toast("Sent to " + to); },
+
+    // map
+    openRoom: (el) => openRoom(el.dataset.room),
+    setWing: (el) => { ui.map.wing = el.value; render(); },
+    toggleLabels: (el) => { ui.map.labels = el.checked; render(); },
+    floorStep: (el) => { const F = HMS.floorplan.FLOORS; const i = F.indexOf(ui.map.floor) + Number(el.dataset.d); if (F[i]) { ui.map.floor = F[i]; render(); } },
+    setFloor: (el) => { ui.map.floor = Number(el.dataset.f); render(); },
+    toggleLegend: (el) => { const k = el.dataset.k; ui.map.show[k] = !ui.map.show[k]; render(); },
+    roomTab: (el) => { dlg.tab = el.dataset.tab; renderDialog(); },
+    allotQ: (el) => { dlg.q = el.value; renderDialog(); },
+    pickGuest: (el) => { dlg.picked.push(el.dataset.id); dlg.q = ""; renderDialog(); },
+    pickResident: (el) => { dlg.resident = el.dataset.id; dlg.q = ""; renderDialog(); },
+    pickWalkIn: (el) => { dlg.walkIn = el.dataset.id; dlg.q = ""; renderDialog(); },
+    unpickResident: () => { dlg.resident = null; renderDialog(); },
+    unpickWalkIn: () => { dlg.walkIn = null; renderDialog(); },
+    walkInDays: (el) => { dlg.walkInDays = Math.max(1, Number(el.value) || 1); renderDialog(); },
+    showAllWaiting: () => { dlg.showAll = true; renderDialog(); },
+    toggleCand: (el) => { const id = el.dataset.id; dlg.picked = el.checked ? [...new Set([...dlg.picked, id])] : dlg.picked.filter((x) => x !== id); renderDialog(); },
+    confirmAllot: () => {
+      const { room } = dlg; const names = [];
+      if (dlg.picked.length) { A.allotGuests(room, dlg.picked); names.push(...dlg.picked.map((id) => S.guest(id).name)); }
+      if (dlg.resident) { A.allotResident(room, dlg.resident, ui.day); names.push(S.resident(dlg.resident).name); }
+      if (dlg.walkIn) { A.addWalkInGuest(room, dlg.walkIn, ui.day, D.add(ui.day, dlg.walkInDays - 1)); names.push(dlg.walkIn); }
+      const fb = ui.map.focusBooking;
+      const left = fb ? S.unhousedGuests().filter((p) => p.booking.id === fb).length : 0;
+      if (fb && !left) ui.map.focusBooking = null;
+      closeDialog();
+      UI.toast(`Room ${room} allotted to ${names.join(", ")}.${left ? ` ${left} more from this request to go.` : ""}`);
+    },
+    setMaintenancePrompt: () => {
+      const room = dlg.room;
+      form("Mark room " + room + " for repair", `<label class="field"><span>What needs fixing?</span><textarea class="input" name="note" rows="3" placeholder="e.g. Ceiling fan not working"></textarea></label>`, "Mark for repair",
+        (v) => { if (!v.note.trim()) return "Describe the repair so the maintenance cell knows."; A.setMaintenance(room, v.note.trim(), ui.day); UI.toast("Room " + room + " marked under repair"); });
+    },
+    clearMaintenance: (el) => { A.clearMaintenance(el.dataset.room, ui.day); closeDialog(); UI.toast("Room " + el.dataset.room + " is back in use"); },
+    sendNotify: (el) => { const to = document.getElementById("notify-to").value, msg = document.getElementById("notify-msg").value.trim(); A.notify(to, msg, el.dataset.room); closeDialog(); UI.toast("Sent to " + to); },
+    extendStay: (el) => { dlg.extend = dlg.extend === el.dataset.id ? null : el.dataset.id; renderDialog(); },
+    confirmExtend: (el) => { const to = document.getElementById("extend-to").value; A.extendStay(el.dataset.id, to); dlg.extend = null; renderDialog(); render(); UI.toast("Stay extended to " + D.fmt(to)); },
+    checkOut: (el) => { A.checkOutStay(el.dataset.id, D.add(ui.day, 1)); closeDialog(); UI.toast("Checked out. Room frees up tomorrow."); },
+    roomAddMore: () => { const room = dlg.room; UI.close(true); dlg = null; openDialog({ type: "allot", room, tab: "allot", picked: [], focusBooking: null, q: "", resident: null, walkIn: null, walkInDays: 2, showAll: true }); },
+
+    // forms, settings, demo
+    submitForm: () => {
+      const vals = Object.fromEntries([...document.querySelectorAll(".layer [name]")].map((i) => [i.name, i.value]));
+      const err = dlg.onSubmit(vals);
+      if (typeof err === "string") { UI.toast(err); return; }
+      closeDialog();
+    },
+    setLang: (el) => { A.setSetting("lang", el.dataset.v); render(); },
+    resetDemo: () => form("Reset demo data?", "", "Reset everything", () => { HMS.store.reset(); ui.map.focusBooking = null; UI.toast("Demo data reset"); }, { intro: "Every room, request, resident edit and saved tab goes back to the starting state.", danger: true }),
+  };
+
+  function saveDraftFields() {
+    const f = (id) => document.getElementById(id);
+    if (f("draft-from")) dlg.from = f("draft-from").value;
+    if (f("draft-to")) dlg.to = f("draft-to").value;
+    if (f("draft-comments")) dlg.comments = f("draft-comments").value;
+  }
+  function copyCsv(rows, cols, what) {
+    const text = UI.csv(rows, cols);
+    (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(
+      () => UI.toast(`Copied ${what} as CSV. Paste into Sheets or Excel.`),
+      () => UI.toast("Couldn't reach the clipboard in this browser."));
+  }
+
+  /* ------------------------------ Delegation ------------------------------ */
+  document.addEventListener("click", (e) => {
+    const el = e.target.closest("[data-act]");
+    if (!el) { if (ui.pop && !e.target.closest(".popover")) { ui.pop = null; render(); } if (ui.res.filterOpen && !e.target.closest(".filter-pop")) { ui.res.filterOpen = false; render(); } return; }
+    if (el.dataset.selfOnly && e.target !== el) return;
+    if (el.disabled) return;
+    const fn = H[el.dataset.act];
+    if (fn) { e.preventDefault(); fn(el, e); }
+  });
+  document.addEventListener("input", (e) => { const n = e.target.dataset && e.target.dataset.onInput; if (n && H[n]) H[n](e.target, e); });
+  document.addEventListener("change", (e) => { const n = e.target.dataset && e.target.dataset.onChange; if (n && H[n]) H[n](e.target, e); });
+  document.addEventListener("keydown", (e) => {
+    const t = e.target;
+    if (e.key === "Escape") { if (UI.isOpen()) closeDialog(); else if (ui.pop || ui.res.filterOpen) { ui.pop = null; ui.res.filterOpen = false; render(); } return; }
+    if (e.key === "Enter" && t.dataset && t.dataset.onEnter) { e.preventDefault(); H[t.dataset.onEnter](t, e); return; }
+    if ((e.key === "Enter" || e.key === " ") && t.getAttribute && t.getAttribute("role") === "button" && t.dataset.act) { e.preventDefault(); H[t.dataset.act](t, e); }
+  });
+  window.addEventListener("hashchange", onRoute);
+
+  /* --------------------------------- Boot --------------------------------- */
+  HMS.app = { ui, H, go, render, get dlg() { return dlg; } };  // exposed for tests / console poking
+  onRoute();
+})();
+
+</script>
+</body>
+</html>
