@@ -34,8 +34,9 @@
   app.portal({
     id: "dept",
     defaultPath: "requests",
-    nav: [["requests", "My Requests"], ["new", "New Request"]],
+    nav: [["requests", "My Requests"]],
     title: (r) => (r.path === "new" ? "New Request" : "My Requests"),
+    active: (r) => (r.path === "new" ? "requests" : r.path),
     render(route, ctx) {
       const c = cfg(); R.register(c);
       if (route.path === "new") return R.form(c);

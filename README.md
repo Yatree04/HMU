@@ -40,24 +40,33 @@ Every step is written to the request's timeline and notifies the next person
 
 | Portal | Route | Screens |
 |---|---|---|
-| Hall Manager (Hostel 17) | `#/hm` | Dashboard + Updates, Residents (tabs, filters, saved tabs, profile), Bookings/Requests (+ Student Forms), Hostel Map (allot, extend, check out, repair), Actions (rooms, residents, batch, notices, reports), Settings |
+| Hall Manager (Hostel 17) | `#/hm` | Dashboard + Updates, Residents (tabs, filters, saved tabs, profile), Requests (Guest stays: To do / Allotted / Past, and Student forms), Hostel Map (allot, extend, check out, repair), Actions (rooms, residents, batch, notices, reports), Settings |
 | HCU Office | `#/hcu` | Dashboard (all hostels, capacity strips, queue, turnaround), Hostels (list → detail, read-only map and residents), All Residents, Requests (route, split, reject), Batches (upload, per person, hostel preferences), Reports, Settings |
-| Associate Dean SA | `#/dean` | Approvals Queue (IRCC, Department, IR, Individual), approve with note / partial approval / reject with reason, History |
-| Student | `#/student` | My Hostel (room, roommate, notices, quick actions), My Requests (timeline, cancel, extension), New Request, My Forms (retention, vacation, preference, mess, room change) |
-| Department Office | `#/dept` | My Requests, Submit Visitor Request (type, guest list upload, documents) |
-| IRCC & Event Council | `#/ircc` | My Batches (per-person allocation, extensions), Submit Batch Request |
+| Associate Dean SA | `#/dean` | Requests (Waiting for you / Decided; filter by type or requester), approve with note / partial approval / reject with reason |
+| Student | `#/student` | My Hostel (room, roommate, notices, quick actions), My Requests (list → timeline, cancel, extension; "New guest request" button), My Forms (retention, vacation, preference, mess, room change) |
+| Department Office | `#/dept` | My Requests (list → detail; "Submit visitor request" button: type, guest list upload, documents) |
+| IRCC & Event Council | `#/ircc` | My Batches (list → per-person allocation, extensions; "Submit batch request" button) |
 
 ## Try the whole flow (5 minutes)
 
 1. **IDC Office** → New Request → *Workshop and seminar*, paste a list with women and men, attach a file, submit.
 2. **Associate Dean SA** → open it → approve with a note (or try *Partial approval*).
 3. **HCU Office** → Requests → open it → pick Hostel 17 for the women and a men's hostel → Send.
-4. **Hall Manager** → Bookings → Accept → *Allot now* → click an unoccupied room → Allot.
+4. **Hall Manager** → Requests → *Accept* on the row → *Allot now* → click an unoccupied room → Allot.
 5. **IDC Office** → the request shows the rooms, and the bell has every step.
 
 Also try: Student → *Keep my room over a break*, then Hall Manager approves it
 from Updates; HCU → Batches → *Upload new batch* → Hall Manager → Actions →
 Batch operations → *Auto-allot*.
+
+## Lists
+
+Every request list (Hall Manager, Dean SA, HCU, Student, Department, IRCC) is
+the same component, `js/core/list.js`: the toolbar from Figma 238:4052 (Filter
+"Where:" builder, tabs, Rows per page, Search) over the table from Figma
+293:10039 (grey header band, striped rows, numbered pages). Click a row to
+open the request; the next action (Accept, Allot, Review, Pick hostel) sits at
+the end of the row. Tabs are by status, so each role's first tab is its to-do list.
 
 ## Code layout
 
@@ -74,6 +83,7 @@ js/core/store.js            the only data layer: selectors + mutations, every po
 js/core/ui.js               icons, overlays, toasts, CSV
 js/core/shared.js           status labels, stepper, timeline, form types, charts
 js/app.js                   sign-in, router, shell, dialogs, event delegation
+js/core/list.js             the shared list view (filter, tabs, search, sort, pages)
 js/portals/hm/*.js          Hall Manager screens + portal.js (routes, handlers)
 js/portals/requester.js     request form / list / detail shared by requesters
 js/portals/{student,dept,ircc,dean,hcu}.js

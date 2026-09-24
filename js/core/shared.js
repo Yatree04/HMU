@@ -12,7 +12,7 @@ HMS.shared = (function () {
 
   /* Status as the requester sees it, and as staff see it */
   const STATUS = {
-    dean: { cls: "badge-warn", label: "With Associate Dean SA", staff: "Awaiting Dean SA" },
+    dean: { cls: "badge-warn", label: "With Dean SA", staff: "Awaiting Dean SA" },
     hcu: { cls: "badge-warn", label: "With HCU", staff: "Needs a hostel" },
     pending: { cls: "badge-warn", label: "With Hall Manager", staff: "Waiting for you" },
     accepted: { cls: "badge-teal", label: "Accepted · room soon", staff: "Needs room" },
@@ -69,19 +69,31 @@ HMS.shared = (function () {
     }[r.status] || "";
   }
 
-  /** Requester-side card (student, department, IRCC) */
-  function requestCard(r, href) {
-    return `<article class="req ${r.kind === "group" ? "group" : ""}">
-      <div class="req-kind">${esc(typeLabel(r))}${r.kind === "group" ? " · Group" : ""}</div>
-      <span class="status">${badge(r.status)}</span>
-      <div class="req-fields">
-        ${r.kind === "group" ? kv("Number of Guests", `${r.count} · ${esc(r.title)}`) : kv("Name", esc(r.title))}${kv("Days", D.days(r.from, r.to) + 1)}
-        ${kv("From", D.fmt(r.from))}${kv("To", D.fmt(r.to))}
-        ${kv("Hostel", esc(hostelName(r.hostel)))}${kv("Requested on", D.fmt(r.requestedOn))}
-      </div>
-      <div class="row"><button class="btn btn-secondary" data-act="go" data-href="${href}">${icon("eye")} Track</button></div>
-    </article>`;
+  /** Flat row for the list kit (search, filter and sort work on these values) */
+  function requestRow(r, staff) {
+    const S = HMS.store.sel;
+    const names = r.guestIds.map((g) => (S.guest(g) || {}).name).filter(Boolean);
+    const rooms = S.requestRooms(r.id);
+    return {
+      id: r.id, r,
+      requestedOn: r.requestedOn, requestedBy: r.requestedBy,
+      guests: r.kind === "group" ? r.title : names.join(", ") || r.title,
+      count: r.count, type: typeLabel(r), from: r.from, to: r.to, days: D.days(r.from, r.to) + 1,
+      hostel: hostelName(r.hostel), rooms: rooms.length > 2 ? rooms.length + " rooms" : rooms.join(", "),
+      where: r.hostel ? hostelName(r.hostel) + (rooms.length ? " · " + (rooms.length > 2 ? rooms.length + " rooms" : rooms.join(", ")) : "") : "Not assigned yet",
+      status: (STATUS[r.status] || STATUS.pending)[staff ? "staff" : "label"],
+      search: names.join(" ") + " " + r.comments,
+    };
   }
+  /** Column formatters shared by request tables */
+  const col = {
+    date: (v) => D.fmt(v),
+    guests: (v, row) => `<span class="cell-main">${esc(v)}</span>${row.r.kind === "group" ? `<span class="group-tag">Group · ${row.count}</span>` : ""}`,
+    status: (v, row, staff) => badge(row.r.status, staff),
+    staffStatus: (v, row) => badge(row.r.status, true) + (row.r.extension && row.r.extension.state === "open" ? ` <span class="badge badge-warn">Extension</span>` : ""),
+    reqStatus: (v, row) => badge(row.r.status) + (row.r.extension && row.r.extension.state === "open" ? ` <span class="badge badge-warn">Extension</span>` : ""),
+    muted: (v) => `<span class="cell-muted">${esc(v)}</span>`,
+  };
 
   /** Full request detail for requesters and reviewers */
   function requestDetail(r, opts = {}) {
@@ -189,5 +201,5 @@ HMS.shared = (function () {
     return `<div class="avail ${ok ? "ok" : "low"}">${icon(ok ? "check" : "clock")} <span><b>${free}</b> room${free === 1 ? "" : "s"} free in ${esc(hostelName(hostelId))} for ${D.fmt(from)} – ${D.fmt(to)}${ok ? "" : ". The Hall Manager may suggest other dates."}</span></div>`;
   }
 
-  return { STATUS, badge, isActive, typeLabel, hostelName, stagesFor, stepper, timeline, nextStep, requestCard, requestDetail, formBadge, bars, capStrip, parseList, guestEditor, docsEditor, availability };
+  return { STATUS, badge, isActive, typeLabel, hostelName, stagesFor, stepper, timeline, nextStep, requestRow, col, requestDetail, formBadge, bars, capStrip, parseList, guestEditor, docsEditor, availability };
 })();

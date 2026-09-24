@@ -119,8 +119,9 @@
   app.portal({
     id: "student",
     defaultPath: "home",
-    nav: [["home", "My Hostel"], ["requests", "My Requests"], ["new", "New Request"], ["forms", "My Forms"]],
+    nav: [["home", "My Hostel"], ["requests", "My Requests"], ["forms", "My Forms"]],
     title: (r) => TITLES[r.path] || "Student",
+    active: (r) => (r.path === "new" ? "requests" : r.path),
     render(route, ctx) {
       const c = cfg(); R.register(c);
       if (route.path === "requests") return route.id ? R.detail(c, route.id) : R.list(c, ctx);

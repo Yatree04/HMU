@@ -124,36 +124,46 @@
         <span class="mini-select"><select data-on-change="hcuRes" data-k="hostel" aria-label="Hostel"><option value="all">All hostels</option>${C.HOSTELS.map((h) => `<option value="${h.id}" ${f.hostel === h.id ? "selected" : ""}>${esc(h.name)}</option>`).join("")}</select>${icon("caretDown")}</span>
         <span class="mini-select"><select data-on-change="hcuRes" data-k="prog" aria-label="Programme"><option value="">All programmes</option>${["Bachelors", "Masters", "PhD"].map((p) => `<option ${f.prog === p ? "selected" : ""}>${p}</option>`).join("")}</select>${icon("caretDown")}</span>
       </div><span class="search">${icon("search")}<input class="input" type="search" placeholder="Name, roll or department" value="${esc(f.q)}" data-on-input="hcuRes" data-k="q"></span></div>
-      <div class="table-wrap"><table class="data"><thead><tr><th>Hostel</th><th>Room</th><th>Roll</th><th>Name</th><th>Department</th><th>Programme</th></tr></thead><tbody>
+      <div class="table-card"><div class="table-wrap"><table class="data"><thead><tr><th>Hostel</th><th>Room</th><th>Roll</th><th>Name</th><th>Department</th><th>Programme</th></tr></thead><tbody>
         ${slice.map((r) => `<tr ${r.hostel === "H17" ? `class="click-row" data-act="hcuResident" data-id="${r.id}"` : ""}><td>${esc((C.hostel(r.hostel) || {}).name || "Hostel 17")}</td><td>${esc(r.room)}</td><td>${esc(r.roll)}</td><td>${esc(r.name)}</td><td>${esc(r.dept)}</td><td>${esc(r.program)}</td></tr>`).join("")}
       </tbody></table></div>
-      <div class="pager"><span class="num">${rows.length ? (page - 1) * per + 1 : 0}–${Math.min(page * per, rows.length)} of ${rows.length.toLocaleString("en-IN")}</span>
-        ${pages > 1 ? `<div class="row"><button class="btn btn-secondary" data-act="hcuPage" data-d="-1" ${page <= 1 ? "disabled" : ""}>Previous</button><button class="btn btn-secondary" data-act="hcuPage" data-d="1" ${page >= pages ? "disabled" : ""}>Next</button></div>` : ""}</div>
+      ${HMS.list.pager(page, pages, rows.length, per, "hcuPageTo")}</div>
     </section>`;
   }
 
   /* ------------------------------ Requests ------------------------------ */
-  const RTABS = [
-    { id: "incoming", label: "All Incoming", test: (r) => r.status === "hcu" },
-    { id: "dean", label: "Awaiting Dean SA Approval", test: (r) => r.status === "dean" },
-    { id: "hm", label: "Sent to Hall Manager", test: (r) => r.status === "pending" || r.status === "accepted" },
-    { id: "allotted", label: "Allotted", test: (r) => r.status === "allotted" },
-    { id: "done", label: "Completed and Rejected", test: (r) => ["completed", "rejected", "cancelled"].includes(r.status) },
-  ];
   function requestTable(list) {
-    return `<div class="table-wrap"><table class="data"><thead><tr><th>ID</th><th>Request</th><th>Type</th><th>From</th><th>People</th><th>Stay</th><th>Hostel</th><th>Status</th></tr></thead><tbody>
+    return `<div class="table-card"><div class="table-wrap"><table class="data"><thead><tr><th>ID</th><th>Request</th><th>Type</th><th>From</th><th>People</th><th>Stay</th><th>Hostel</th><th>Status</th></tr></thead><tbody>
       ${list.map((r) => `<tr class="click-row" data-act="go" data-href="#/hcu/requests/${r.id}"><td class="muted">${esc(r.id)}</td><td>${esc(r.title)}${r.extension && r.extension.state === "open" ? ` <span class="badge badge-warn">Extension</span>` : ""}</td><td style="font-weight:400">${esc(SH.typeLabel(r))}</td><td style="font-weight:400">${esc(r.requestedBy)}</td><td>${r.count} · ${esc((r.gender || "")[0] || "")}</td><td>${D.fmt(r.from)} – ${D.fmt(r.to)}</td><td>${esc(SH.hostelName(r.hostel))}</td><td>${SH.badge(r.status)}</td></tr>`).join("")}
-    </tbody></table></div>`;
+    </tbody></table></div></div>`;
   }
   function requests() {
-    const tab = RTABS.find((t) => t.id === ui.hcu.rTab) || RTABS[0];
-    let list = S.requests().filter(tab.test);
-    if (ui.hcu.rq) { const q = ui.hcu.rq.toLowerCase(); list = list.filter((r) => (r.title + r.requestedBy + r.id).toLowerCase().includes(q)); }
-    list.sort((a, b) => a.from.localeCompare(b.from));
+    const rows = S.requests().map((r) => ({ ...SH.requestRow(r), people: r.count + " · " + (r.gender || "") }));
     return `<section>
-      <div class="page-head"><h1 class="page-title">Requests · all sources</h1><span class="search">${icon("search")}<input class="input" type="search" placeholder="Search requests" value="${esc(ui.hcu.rq)}" data-on-input="hcuRq"></span></div>
-      <div class="tabs" role="tablist">${RTABS.map((t) => `<button class="tab" role="tab" aria-selected="${t.id === tab.id}" data-act="hcuRTab" data-tab="${t.id}">${t.label} <span class="muted">${S.requests().filter(t.test).length}</span></button>`).join("")}</div>
-      ${list.length ? requestTable(list) : `<div class="empty"><strong>Nothing here</strong></div>`}
+      <div class="page-head"><h1 class="page-title">Requests · all sources</h1></div>
+      ${HMS.list.render({
+        key: "hcuRequests", rows, defaults: { sort: { key: "from", dir: 1 } },
+        tabs: [
+          { id: "incoming", label: "Needs a hostel", test: (row) => row.r.status === "hcu" },
+          { id: "dean", label: "With Dean SA", test: (row) => row.r.status === "dean" },
+          { id: "hm", label: "With Hall Manager", test: (row) => row.r.status === "pending" || row.r.status === "accepted" },
+          { id: "allotted", label: "Allotted", test: (row) => row.r.status === "allotted" },
+          { id: "done", label: "Closed", test: (row) => ["completed", "rejected", "cancelled"].includes(row.r.status) },
+        ],
+        cols: [
+          { key: "guests", label: "Request", fmt: SH.col.guests },
+          { key: "requestedBy", label: "Requested by", cls: "wrap-sm" },
+          { key: "type", label: "Type", cls: "wrap-sm", fmt: SH.col.muted },
+          { key: "people", label: "People" },
+          { key: "from", label: "Arrival", fmt: SH.col.date },
+          { key: "to", label: "Departure", fmt: SH.col.date },
+          { key: "hostel", label: "Hostel" },
+          { key: "status", label: "Status", fmt: SH.col.reqStatus },
+        ],
+        rowAttrs: (row) => `data-act="go" data-href="#/hcu/requests/${row.id}"`,
+        actions: (row) => row.r.status === "hcu" ? `<button class="btn btn-primary" data-act="go" data-href="#/hcu/requests/${row.id}">${icon("route")} Pick hostel</button>` : `<div class="actions"><button data-act="go" data-href="#/hcu/requests/${row.id}" aria-label="View">${icon("eye")}</button></div>`,
+        empty: { title: "Nothing here" },
+      })}
     </section>`;
   }
 
@@ -292,6 +302,7 @@
     hcuHTab: (el) => { ui.hcu.hTab = el.dataset.tab; render(); },
     hcuHq: (el) => { ui.hcu.hq = el.value; render(); },
     hcuRes: (el) => { ui.hcu.res[el.dataset.k] = el.value; ui.hcu.res.page = 1; render(); },
+    hcuPageTo: (el) => { ui.hcu.res.page = Number(el.dataset.p); render(); },
     hcuPage: (el) => { ui.hcu.res.page = Math.max(1, ui.hcu.res.page + Number(el.dataset.d)); render(); },
     hcuResident: (el) => {
       const r = S.resident(el.dataset.id);
@@ -305,8 +316,6 @@
       const rows = f.hostel === "all" ? [...S.residentRows(null, ui.hcu.day), ...C.HOSTELS.filter((h) => !h.modelled).flatMap((h) => C.residentsOf(h.id))] : f.hostel === "H17" ? S.residentRows(null, ui.hcu.day) : C.residentsOf(f.hostel);
       csv(rows.map((r) => ({ ...r, hostel: r.hostel || "H17" })), [{ key: "hostel", label: "Hostel" }, { key: "room", label: "Room" }, { key: "roll", label: "Roll" }, { key: "name", label: "Name" }, { key: "dept", label: "Department" }, { key: "program", label: "Programme" }], "residents");
     },
-    hcuRTab: (el) => { ui.hcu.rTab = el.dataset.tab; render(); },
-    hcuRq: (el) => { ui.hcu.rq = el.value; render(); },
     hcuPick: (el) => { ui.hcu.route[el.dataset.g] = el.dataset.h; render(); },
     hcuNote: (el) => { ui.hcu.note = el.value; },
     hcuRoute: (el) => {

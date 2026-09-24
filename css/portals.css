@@ -132,13 +132,6 @@ tr.struck td:not(:last-child) { text-decoration: line-through; color: var(--body
 /* ---------- Lists, queues, cards ---------- */
 .stats-4 { grid-template-columns: repeat(4, 1fr); margin-bottom: 20px; }
 .stats-6 { grid-template-columns: repeat(6, 1fr); margin-bottom: 18px; }
-.queue { display: flex; flex-direction: column; gap: 14px; }
-.q-row { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.2fr) auto; gap: 24px; align-items: center; background: #fff; border-radius: 16px; box-shadow: 0 2px 16px rgba(0,0,0,.08); padding: 18px 22px; cursor: pointer; }
-.q-row:hover { box-shadow: 0 2px 16px rgba(1,148,135,.25); }
-.q-row h3 { font-size: 15px; margin: 2px 0 6px; font-weight: 500; }
-.q-row p { font-size: 12px; color: var(--body-2); margin: 0 0 8px; line-height: 1.4; }
-.q-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin: 0; }
-.q-age { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
 .click-row { cursor: pointer; }
 .count-dot { display: inline-grid; place-items: center; min-width: 16px; height: 16px; border-radius: 8px; background: var(--primary-cta-bg); color: #fff; font-size: 9px; padding: 0 4px; margin-left: 4px; }
 .note-action { display: flex; gap: 8px; align-items: center; max-width: none; border: 1px solid var(--colored-subheading); background: #eaf7f4; color: var(--badge-1); }
@@ -233,8 +226,6 @@ tr.struck td:not(:last-child) { text-decoration: line-through; color: var(--body
   .detail, .form-layout { grid-template-columns: 1fr; }
   .detail .history, .form-side .sticky { position: static; }
   .stats-6 { grid-template-columns: repeat(3, 1fr); }
-  .q-row { grid-template-columns: 1fr; gap: 12px; }
-  .q-age { flex-direction: row; justify-content: space-between; align-items: center; }
 }
 @media (max-width: 900px) {
   .login { padding: 18px 16px 32px; }
@@ -266,8 +257,6 @@ tr.struck td:not(:last-child) { text-decoration: line-through; color: var(--body
   .pills { flex-wrap: wrap; gap: 8px; }
   .stats, .stats-4, .stats-6 { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .stat-value b { font-size: 32px; line-height: 40px; }
-  .req-grid { grid-template-columns: 1fr; }
-  .q-facts { grid-template-columns: 1fr 1fr; }
   .flow-h li { flex-basis: 40%; }
   .toolbar-left, .toolbar-right { flex-wrap: wrap; }
   .search .input { width: 100%; }
@@ -302,3 +291,47 @@ tr.struck td:not(:last-child) { text-decoration: line-through; color: var(--body
   .stat-value b { font-size: 26px; line-height: 34px; }
   .stat-value small { font-size: 9px; }
 }
+
+/* ==========================================================================
+   Tables — Figma 293:10039: rounded card, grey header band, zebra rows,
+   grey footer with "1–12 of 24" and numbered pages. Every table uses it.
+   ========================================================================== */
+.table-wrap, .table-card { background: #fff; border: 1px solid var(--light-stroke); border-radius: var(--r-card); overflow: hidden; }
+.table-wrap { overflow-x: auto; }
+.table-card .table-wrap { border: 0; border-radius: 0; }
+table.data thead th { background: var(--secondary-cta-hover); padding: 14px 12px 12px; font-size: 10px; font-weight: 500; color: var(--grey-subheading); }
+table.data thead th:first-child, table.data tbody td:first-child { padding-left: 24px; }
+table.data tbody td { padding: 11px 12px; font-size: 12px; font-weight: 500; letter-spacing: .4px; line-height: 16px; border-top: 1px solid var(--light-stroke); vertical-align: middle; }
+table.data tbody tr:nth-child(even) td { background: var(--secondary-cta-hover); }
+table.data tbody tr:hover td, table.data tbody tr.click-row:hover td { background: #e6f4f1; }
+table.data tr.floor-break td { padding: 0; border-top: 2px solid var(--secondary-cta-border); background: #fff !important; }
+table.data tr.floor-break td::after { display: none; }
+table.data td.wrap { white-space: normal; min-width: 220px; max-width: 360px; }
+table.data .row-actions { width: 1%; }
+table.data .actions { align-items: center; }
+.tfoot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 20px; background: var(--secondary-cta-hover); border-top: 1px solid var(--light-stroke); font-size: 11px; color: var(--grey-subheading); }
+.pages { display: flex; align-items: center; gap: 6px; }
+.pg { min-width: 24px; height: 24px; border-radius: 4px; border: 0; background: transparent; font-family: var(--font-data); font-size: 11px; color: var(--grey-subheading); }
+.pg[aria-current="true"] { background: var(--primary-cta-bg); color: #fff; }
+.pg:hover:not([aria-current="true"]) { background: #fff; }
+.pg-step { display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; color: var(--primary-cta-bg); font-size: 11px; padding: 4px 6px; }
+.pg-step[disabled] { color: var(--secondary-cta-border); cursor: default; }
+.pg-gap { color: var(--body-2); }
+.cell-main { display: inline-block; max-width: 260px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+.cell-muted { font-weight: 400; color: var(--grey-subheading); }
+.group-tag { display: inline-flex; margin-left: 8px; height: 18px; align-items: center; padding: 0 7px; border-radius: 9px; background: var(--primary-cta-bg); color: #fff; font-size: 9px; letter-spacing: 0; vertical-align: middle; }
+.cell-flag { margin-left: 8px; font-size: 9px; height: 18px; }
+.list-view .toolbar { margin-bottom: 4px; }
+.list-view .tabs { margin-bottom: 14px; }
+.guest-editor .table-wrap { border: 0; background: none; border-radius: 0; }
+.guest-editor table.data thead th { background: none; }
+.guest-editor table.data tbody tr:nth-child(even) td, .guest-editor table.data tbody tr:hover td { background: none; }
+.guest-editor table.data tbody td { border-top: 0; padding: 4px 6px; }
+.drawer .table-wrap, .drawer table.data { border-radius: 10px; }
+table.data td.wrap-sm { white-space: normal; min-width: 110px; max-width: 170px; }
+.cell-sub { display: flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 10px; font-weight: 400; letter-spacing: 0; color: var(--warning); }
+table.data tbody td, table.data thead th { padding-left: 10px; padding-right: 10px; }
+table.data thead th:first-child, table.data tbody td:first-child { padding-left: 20px; }
+.cell-main { max-width: 210px; }
+.seg button { display: inline-flex; align-items: center; gap: 6px; }
+.seg button[aria-pressed="true"] .count-dot { background: #fff; color: var(--primary-cta-bg); }

@@ -28,6 +28,7 @@ HMS.app = (function () {
   let dlg = null;                              // current dialog state
   let route = { portal: "login", path: "", id: null, query: {} };
   const portals = {};
+  const hooks = [];                            // shared components that react to outside clicks / Escape
   const H = {};                                // every handler, all portals
 
   /* ------------------------------ Session ------------------------------ */
@@ -242,7 +243,7 @@ HMS.app = (function () {
     if (!el) {
       let changed = false;
       if (ui.pop && !e.target.closest(".popover")) { ui.pop = null; changed = true; }
-      for (const P of Object.values(portals)) if (P.outsideClick && P.outsideClick(e, ui)) changed = true;
+      for (const P of [...Object.values(portals), ...hooks]) if (P.outsideClick && P.outsideClick(e, ui)) changed = true;
       if (changed) render();
       return;
     }
@@ -257,7 +258,7 @@ HMS.app = (function () {
     const t = e.target;
     if (e.key === "Escape") {
       if (UI.isOpen()) closeDialog();
-      else { let changed = !!ui.pop; ui.pop = null; for (const P of Object.values(portals)) if (P.escape && P.escape(ui)) changed = true; if (changed) render(); }
+      else { let changed = !!ui.pop; ui.pop = null; for (const P of [...Object.values(portals), ...hooks]) if (P.escape && P.escape(ui)) changed = true; if (changed) render(); }
       return;
     }
     if (e.key === "Enter" && t.dataset && t.dataset.onEnter) { e.preventDefault(); H[t.dataset.onEnter](t, e); return; }
@@ -270,7 +271,7 @@ HMS.app = (function () {
   function start() { onRoute(); }
 
   return {
-    ui, H, go, render, renderDialog, openDialog, closeDialog, form, formValues, portal, start, user,
+    ui, H, go, render, renderDialog, openDialog, closeDialog, form, formValues, portal, start, user, hook: (h) => hooks.push(h),
     get dlg() { return dlg; }, set dlg(v) { dlg = v; }, get route() { return route; },
   };
 })();

@@ -117,6 +117,7 @@
     resQ: (el) => { ui.res.q = el.value; ui.res.page = 1; render(); },
     sortBy: (el) => { const k = el.dataset.key; ui.res.sort = { key: k, dir: ui.res.sort.key === k ? -ui.res.sort.dir : 1 }; render(); },
     page: (el) => { ui.res.page = Math.max(1, ui.res.page + Number(el.dataset.d)); render(); },
+    resPageTo: (el) => { ui.res.page = Number(el.dataset.p); render(); },
     exportResidents: () => { const { rows, cols } = V.residents.rowsFor({ ui, query: app.route.query }); copyCsv(rows, cols, rows.length + " rows"); },
     exportAll: () => { copyCsv(S.residentRows(null, ui.day), V.residents.COLS.resident, "all residents"); },
     editResident: (el) => {
@@ -138,10 +139,7 @@
     addRemark: (el) => { const inp = document.getElementById("remark-input"); if (!inp.value.trim()) return inp.focus(); A.addRemark(el.dataset.id, inp.value.trim()); render(); UI.toast("Remark added"); },
 
     // requests
-    bookTab: (el) => { ui.book.tab = el.dataset.tab; render(); },
-    toggleBookSearch: () => { ui.book.searchOpen = true; render(); },
-    bookQ: (el) => { ui.book.q = el.value; render(); },
-    toggleBookSort: () => { ui.book.sortAsc = !ui.book.sortAsc; render(); UI.toast(ui.book.sortAsc ? "Oldest requests first" : "Newest requests first"); },
+    bookView: (el) => { ui.book.view = el.dataset.v; render(); },
     viewRequest: (el) => open("request", { id: el.dataset.id }),
     acceptRequest: (el) => {
       A.acceptRequest(el.dataset.id); closeDialog();
@@ -324,7 +322,7 @@
   app.portal({
     id: "hm",
     defaultPath: "dashboard",
-    nav: [["dashboard", "Dashboard"], ["residents", "Residents"], ["requests", "Bookings"], ["map", "Hostel Map"], ["actions", "Actions"]],
+    nav: [["dashboard", "Dashboard"], ["residents", "Residents"], ["requests", "Requests"], ["map", "Hostel Map"], ["actions", "Actions"]],
     settings: true,
     search: searchPop,
     title: (r) => TITLES[r.path] || "Hall Manager",
@@ -333,7 +331,7 @@
         day: HMS.TODAY,
         guestQ: "", guestSearchOpen: false, guestSortAsc: true, updatesQ: "",
         res: { tab: "Bachelors", filters: [], filterOpen: false, perPage: "50", page: 1, q: "", sort: { key: "room", dir: 1 } },
-        book: { tab: "all", q: "", searchOpen: false, sortAsc: false },
+        book: { view: "requests" },
         map: { floor: 3, wing: "all", show: { allotted: true, empty: true, guest: true, maintenance: true }, room: null, labels: false, focusRequest: null },
         act: { tab: "rooms", pick: [] },
       });
@@ -344,7 +342,7 @@
         if (q.tab) u.res.tab = q.tab;
         if (prev.path !== "residents" || q.tab) u.res.page = 1;
       }
-      if (route.path === "requests" && q.tab) u.book.tab = q.tab;
+      if (route.path === "requests" && q.tab) u.book.view = q.tab === "forms" ? "forms" : "requests";
       if (route.path === "actions" && q.tab) u.act.tab = q.tab;
       if (route.path === "map") {
         if (q.floor) u.map.floor = Number(q.floor);

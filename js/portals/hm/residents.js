@@ -83,12 +83,10 @@ HMS.views.residents = (function () {
           <button data-act="${r.kind === "resident" ? "editResident" : "editGuestStay"}" data-id="${r.id}" aria-label="Edit ${esc(r.name)}">${icon("pencil")}</button>
         </div></td></tr>`;
     }).join("");
-    return `<div class="table-wrap"><table class="data">
+    return `<div class="table-card"><div class="table-wrap"><table class="data">
       <thead><tr>${cols.map((c) => `<th scope="col"><button class="sort-th" data-act="sortBy" data-key="${c.key}">${c.label}${u.sort.key === c.key ? icon(u.sort.dir > 0 ? "caretDown" : "caretUp") : ""}</button></th>`).join("")}<th><span class="sr-only">Actions</span></th></tr></thead>
       <tbody>${body}</tbody></table></div>
-      <div class="pager"><span class="num">${(page - 1) * per + 1}–${Math.min(page * per, rows.length)} of ${rows.length}</span>
-        ${pages > 1 ? `<div class="row"><button class="btn btn-secondary" data-act="page" data-d="-1" ${page <= 1 ? "disabled" : ""}>Previous</button><button class="btn btn-secondary" data-act="page" data-d="1" ${page >= pages ? "disabled" : ""}>Next</button></div>` : ""}
-      </div>`;
+      ${HMS.list.pager(page, pages, rows.length, per, "resPageTo")}</div>`;
   }
 
   function render(ctx) {

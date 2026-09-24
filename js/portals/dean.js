@@ -11,43 +11,50 @@
   const ui = app.ui;
   const render = () => app.render();
 
-  const TABS = [
-    { id: "all", label: "All", test: () => true },
-    { id: "ircc", label: "IRCC Requests", test: (r) => ["ircc-intern", "event", "exam"].includes(r.type) },
-    { id: "dept", label: "Department Requests", test: (r) => r.source === "department" },
-    { id: "ir", label: "IR Student Requests", test: (r) => r.type === "ir" },
-    { id: "individual", label: "Individual Requests", test: (r) => r.count === 1 },
-  ];
-  const waiting = () => S.requests().filter((r) => r.status === "dean").sort((a, b) => a.requestedOn.localeCompare(b.requestedOn));
-  const decided = () => S.requests().filter((r) => (r.timeline || []).some((e) => e.role === "dean"));
+  const waiting = () => S.requests().filter((r) => r.status === "dean");
+  const decidedBy = (r) => (r.timeline || []).filter((e) => e.role === "dean").slice(-1)[0];
 
-  function queue(ctx) {
-    const u = ctx.ui.dean;
-    const tab = TABS.find((t) => t.id === u.tab) || TABS[0];
+  /** One list: Waiting for you / Decided / All. Type and requester are filterable columns. */
+  function queue() {
     const all = waiting();
-    const list = all.filter(tab.test);
     const t = S.turnaround();
-    const oldest = all.length ? D.days(all[0].requestedOn, HMS.TODAY) : 0;
+    const oldest = all.length ? Math.max(...all.map((r) => D.days(r.requestedOn, HMS.TODAY))) : 0;
+    const rows = S.requests().filter((r) => r.status === "dean" || decidedBy(r)).map((r) => {
+      const dec = decidedBy(r);
+      const clash = r.status === "dean" ? S.requests().filter((o) => o.id !== r.id && ["dean", "hcu", "pending", "accepted", "allotted"].includes(o.status) && o.count >= 10 && D.rangesOverlap(o.from, o.to, r.from, r.to)) : [];
+      return { ...SH.requestRow(r), waited: D.days(r.requestedOn, dec ? dec.at : HMS.TODAY), people: r.count + " · " + r.gender, docs: (r.documents || []).length,
+        decision: r.status === "dean" ? "Waiting" : dec.act === "rejected" ? "Rejected" : dec.act === "partial" ? "Partly approved" : "Approved", decidedOn: dec ? dec.at : "", clash: clash[0] ? clash[0].title + (clash.length > 1 ? ` +${clash.length - 1}` : "") : "" };
+    });
     return `<section>
-      <div class="page-head"><h1 class="page-title">Approvals Queue</h1></div>
+      <div class="page-head"><h1 class="page-title">Requests</h1></div>
       <div class="stats stats-4">
         <div class="stat stat-sm"><div class="stat-label">Waiting for you</div><div class="stat-value"><b>${all.length}</b><small>requests</small></div></div>
         <div class="stat stat-sm"><div class="stat-label">People in them</div><div class="stat-value"><b>${all.reduce((n, r) => n + r.count, 0)}</b></div></div>
         <div class="stat stat-sm"><div class="stat-label">Oldest waiting</div><div class="stat-value"><b>${oldest}</b><small>days</small></div></div>
         <div class="stat stat-sm"><div class="stat-label">Your average decision time</div><div class="stat-value"><b>${t.dean}</b><small>days</small></div></div>
       </div>
-      <div class="tabs" role="tablist">${TABS.map((x) => `<button class="tab" role="tab" aria-selected="${x.id === tab.id}" data-act="deanTab" data-tab="${x.id}">${x.label} <span class="muted">${all.filter(x.test).length}</span></button>`).join("")}</div>
-      ${list.length ? `<div class="queue">${list.map((r) => {
-        const age = D.days(r.requestedOn, HMS.TODAY);
-        const clash = S.requests().filter((o) => o.id !== r.id && ["dean", "hcu", "pending", "accepted", "allotted"].includes(o.status) && o.count >= 10 && D.rangesOverlap(o.from, o.to, r.from, r.to));
-        return `<article class="q-row" data-act="go" data-href="#/dean/approvals/${r.id}" role="button" tabindex="0">
-          <div class="q-main"><div class="req-kind">${esc(SH.typeLabel(r))} · ${esc(r.requestedBy)}</div><h3>${esc(r.title)}</h3>
-            <p>${esc(r.comments)}</p>
-            ${clash.length ? `<span class="badge badge-warn">Overlaps ${esc(clash[0].title)}${clash.length > 1 ? ` +${clash.length - 1}` : ""}</span>` : ""}</div>
-          <dl class="q-facts">${kv("People", r.count + " · " + esc(r.gender))}${kv("Dates", D.fmt(r.from) + " – " + D.fmt(r.to))}${kv("Nights", D.days(r.from, r.to))}${kv("Documents", (r.documents || []).length)}</dl>
-          <div class="q-age"><span class="badge ${age > 3 ? "badge-danger" : "badge-grey"}">${age === 0 ? "Today" : age + " day" + (age > 1 ? "s" : "") + " waiting"}</span><span class="btn btn-primary">Review ${icon("caretRight")}</span></div>
-        </article>`;
-      }).join("")}</div>` : `<div class="empty"><strong>Nothing waiting</strong>New department, IRCC and event requests appear here first.</div>`}
+      ${HMS.list.render({
+        key: "dean", rows, defaults: { sort: { key: "requestedOn", dir: 1 } },
+        tabs: [
+          { id: "waiting", label: "Waiting for you", test: (row) => row.r.status === "dean" },
+          { id: "decided", label: "Decided", test: (row) => row.r.status !== "dean" },
+          { id: "all", label: "All", test: () => true },
+        ],
+        cols: [
+          { key: "guests", label: "Request", fmt: (v, row) => SH.col.guests(v, row) + (row.clash ? `<span class="cell-sub">${icon("info")} Overlaps ${esc(row.clash)}</span>` : "") },
+          { key: "requestedBy", label: "Requested by", cls: "wrap-sm" },
+          { key: "type", label: "Type", cls: "wrap-sm", fmt: SH.col.muted },
+          { key: "people", label: "People" },
+          { key: "from", label: "Arrival", fmt: SH.col.date },
+          { key: "to", label: "Departure", fmt: SH.col.date },
+          { key: "docs", label: "Docs" },
+          { key: "waited", label: "Waited", fmt: (v, row) => row.r.status === "dean" ? `<span class="badge ${v > 3 ? "badge-danger" : "badge-grey"}">${v === 0 ? "Today" : v + " d"}</span>` : v + " d" },
+          { key: "decision", label: "Decision", fmt: (v, row) => row.r.status === "dean" ? `<span class="badge badge-warn">Waiting</span>` : `<span class="badge ${v === "Rejected" ? "badge-danger" : "badge-teal"}">${v}</span>` },
+        ],
+        rowAttrs: (row) => `data-act="go" data-href="#/dean/approvals/${row.id}"`,
+        actions: (row) => row.r.status === "dean" ? `<button class="btn btn-primary" data-act="go" data-href="#/dean/approvals/${row.id}">Review ${icon("caretRight")}</button>` : `<div class="actions"><button data-act="go" data-href="#/dean/approvals/${row.id}" aria-label="View">${icon("eye")}</button></div>`,
+        empty: { title: "Nothing here", body: "New department, IRCC and event requests appear here first." },
+      })}
     </section>`;
   }
 
@@ -71,39 +78,13 @@
         </div>
       </div>` : "";
     return `<section>
-      <button class="back" data-act="go" data-href="#/dean/approvals">${icon("caretLeft")} Approvals Queue</button>
+      <button class="back" data-act="go" data-href="#/dean/approvals">${icon("caretLeft")} Requests</button>
       <div class="page-head"><h1 class="page-title">Approval<span class="sep">|</span>${esc(r.id)}</h1></div>
       ${SH.requestDetail(r, { extra: decision })}
     </section>`;
   }
 
-  function history(ctx) {
-    const h = ctx.ui.deanHist;
-    let list = decided();
-    if (h.q) { const q = h.q.toLowerCase(); list = list.filter((r) => (r.title + r.requestedBy).toLowerCase().includes(q)); }
-    if (h.type) list = list.filter((r) => r.type === h.type);
-    if (h.from) list = list.filter((r) => r.from >= h.from);
-    if (h.to) list = list.filter((r) => r.to <= h.to);
-    const dec = (r) => r.timeline.filter((e) => e.role === "dean").slice(-1)[0];
-    list.sort((a, b) => dec(b).at.localeCompare(dec(a).at));
-    return `<section>
-      <div class="page-head"><h1 class="page-title">History</h1></div>
-      <div class="toolbar">
-        <div class="toolbar-left">
-          <span class="search">${icon("search")}<input class="input" type="search" placeholder="Search by name or requester" value="${esc(h.q)}" data-on-input="deanHist" data-k="q"></span>
-          <span class="mini-select"><select data-on-change="deanHist" data-k="type"><option value="">All types</option>${Object.entries(C.TYPES).filter(([, t]) => t.dean).map(([k, t]) => `<option value="${k}" ${h.type === k ? "selected" : ""}>${esc(t.label)}</option>`).join("")}</select>${icon("caretDown")}</span>
-          <label class="field inline"><span>Stay from</span><input class="input" type="date" value="${h.from}" data-on-change="deanHist" data-k="from"></label>
-          <label class="field inline"><span>to</span><input class="input" type="date" value="${h.to}" data-on-change="deanHist" data-k="to"></label>
-        </div>
-      </div>
-      ${list.length ? `<div class="table-wrap"><table class="data"><thead><tr><th>Decided</th><th>Request</th><th>Type</th><th>From</th><th>People</th><th>Stay</th><th>Decision</th><th>Now</th></tr></thead><tbody>
-        ${list.map((r) => { const e = dec(r); return `<tr data-act="go" data-href="#/dean/approvals/${r.id}" class="click-row"><td>${D.fmt(e.at)}</td><td>${esc(r.title)}</td><td style="font-weight:400">${esc(SH.typeLabel(r))}</td><td style="font-weight:400">${esc(r.requestedBy)}</td><td>${r.count}</td><td>${D.fmt(r.from)} – ${D.fmt(r.to)}</td><td><span class="badge ${e.act === "rejected" ? "badge-danger" : "badge-teal"}">${e.act === "partial" ? "Partly approved" : e.act === "rejected" ? "Rejected" : "Approved"}</span></td><td>${SH.badge(r.status)}</td></tr>`; }).join("")}
-      </tbody></table></div>` : `<div class="empty"><strong>No decisions match</strong></div>`}
-    </section>`;
-  }
-
   const handlers = {
-    deanTab: (el) => { ui.dean.tab = el.dataset.tab; render(); },
     deanMode: (el) => { ui.dean.mode = el.dataset.mode; render(); },
     deanKeep: (el) => { const id = el.dataset.id; ui.dean.keep = el.checked ? [...new Set([...ui.dean.keep, id])] : ui.dean.keep.filter((x) => x !== id); render(); },
     deanDate: (el) => { ui.dean[el.dataset.k] = el.value; render(); },
@@ -124,19 +105,17 @@
         (v) => { if (!v.reason.trim()) return "Add a reason so they know what to change."; A.deanReject(r.id, v.reason.trim()); ui.dean.reviewId = null; setTimeout(() => app.go("#/dean/approvals"), 0); UI.toast("Rejected. " + r.requestedBy + " has been told."); }, { danger: true });
     },
     deanNote: (el) => { ui.dean.note = el.value; },
-    deanHist: (el) => { ui.deanHist[el.dataset.k] = el.value; render(); },
   };
 
   app.portal({
     id: "dean",
     defaultPath: "approvals",
-    nav: [["approvals", "Approvals Queue"], ["history", "History"]],
-    title: (r) => (r.path === "history" ? "History" : "Approvals"),
-    init(u) { u.dean = { tab: "all", reviewId: null, keep: [], mode: "full", from: "", to: "" }; u.deanHist = { q: "", type: "", from: "", to: "" }; },
-    render(route, ctx) {
-      if (route.path === "history") return history(ctx);
-      return route.id ? review(ctx, route.id) : queue(ctx);
-    },
+    nav: [["approvals", "Requests"]],
+    active: () => "approvals",
+    title: () => "Requests",
+    init(u) { u.dean = { reviewId: null, keep: [], mode: "full", from: "", to: "" }; },
+    onRoute(route) { if (route.path === "history") { HMS.list.state("dean").tab = "decided"; route.path = "approvals"; } },
+    render(route, ctx) { return route.id ? review(ctx, route.id) : queue(ctx); },
     handlers,
   });
 })();

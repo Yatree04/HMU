@@ -230,11 +230,9 @@ table.data tbody tr:hover td { background: var(--primary-bg); }
 table.data tr.floor-break td { padding: 10px 0; }
 table.data tr.floor-break td::after { content: ""; display: block; border-top: 2px solid var(--light-stroke); }
 table.data .actions { display: flex; gap: 10px; justify-content: flex-end; }
-table.data .actions button { border: 0; background: none; padding: 2px; font-size: 16px; color: var(--grey-subheading); }
-table.data .actions button:hover { color: var(--primary-cta-bg); }
+table.data .actions button:not(.btn) { border: 0; background: none; padding: 2px; font-size: 16px; color: var(--grey-subheading); }
+table.data .actions button:not(.btn):hover { color: var(--primary-cta-bg); }
 .sort-th { background: none; border: 0; padding: 0; font: inherit; color: inherit; display: inline-flex; gap: 4px; align-items: center; }
-.pager { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; font-size: 12px; color: var(--body-2); }
-.pager .row { display: flex; gap: 8px; }
 
 /* ==========================================================================
    Resident profile (238:7204 → refined 293:10380)
@@ -258,16 +256,6 @@ table.data .actions button:hover { color: var(--primary-cta-bg); }
 /* ==========================================================================
    Requests / Bookings (238:4593, 238:4993)
    ========================================================================== */
-.req-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(218px, 1fr)); gap: 28px 26px; }
-.req { position: relative; background: #fff; border-radius: 16px; box-shadow: 0 2px 16px rgba(0,0,0,.08); padding: 20px 22px 18px 18px; display: flex; flex-direction: column; overflow: hidden; }
-.req.group::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 14px; background: var(--primary-cta-bg); }
-.req.group { padding-right: 32px; }
-.req-fields { display: grid; grid-template-columns: 1fr auto; gap: 14px 18px; margin-bottom: 20px; }
-.req-fields .kv dt { font-size: 8.5px; color: var(--grey-subheading); }
-.req-fields .kv dd { font-size: 12px; font-weight: 600; }
-.req .row { display: flex; gap: 10px; margin-top: auto; flex-wrap: wrap; }
-.req .status { position: absolute; top: 12px; right: 12px; }
-.req.group .status { right: 26px; }
 .req-kind { font-size: 9px; color: var(--primary-cta-bg); margin-bottom: 8px; }
 
 /* ==========================================================================

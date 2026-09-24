@@ -43,6 +43,7 @@ HMS.requester = (function () {
     parts.push(sec(i++, cfg.docsTitle || "Documents", SH.docsEditor(d, cfg.docsLabel), cfg.docsHint));
     const problems = validate(d, cfg);
     return `<section>
+      <button class="back" data-act="go" data-href="${cfg.listHref}">${icon("caretLeft")} ${esc(cfg.listHeading)}</button>
       <div class="page-head"><h1 class="page-title">${esc(cfg.heading)}</h1></div>
       <div class="form-layout">
         <div class="form-main">${parts.join("")}</div>
@@ -74,21 +75,33 @@ HMS.requester = (function () {
     return out;
   }
 
-  /** "My requests" list with Active / Past tabs */
-  function list(cfg, ctx) {
+  /** "My requests" — one list, Active / Past tabs (Figma 238:4052 + 293:10039) */
+  function list(cfg) {
     const all = S.requestsOf(cfg.owner);
-    const tab = ctx.ui.rq.tab;
-    const active = all.filter(SH.isActive), past = all.filter((r) => !SH.isActive(r));
-    const shown = tab === "past" ? past : active;
     const stats = cfg.stats ? `<div class="stats stats-4">${cfg.stats(all).map(([l, v, sub]) => `<div class="stat stat-sm"><div class="stat-label">${esc(l)}</div><div class="stat-value"><b>${v}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</div></div>`).join("")}</div>` : "";
+    const rows = all.map((r) => SH.requestRow(r));
     return `<section>
       <div class="page-head"><h1 class="page-title">${esc(cfg.listHeading)}</h1><button class="btn btn-primary btn-lg" data-act="go" data-href="${cfg.newHref}">${icon("plus")} ${esc(cfg.newLabel)}</button></div>
       ${stats}
-      <div class="tabs" role="tablist">
-        <button class="tab" role="tab" aria-selected="${tab !== "past"}" data-act="rqTab" data-tab="active">Active <span class="muted">${active.length}</span></button>
-        <button class="tab" role="tab" aria-selected="${tab === "past"}" data-act="rqTab" data-tab="past">Past <span class="muted">${past.length}</span></button>
-      </div>
-      ${shown.length ? `<div class="req-grid">${shown.map((r) => SH.requestCard(r, cfg.detailHref(r.id))).join("")}</div>` : `<div class="empty"><strong>${tab === "past" ? "Nothing here yet" : "No active requests"}</strong>${tab === "past" ? "Finished, rejected and cancelled requests show here." : `<button class="link" data-act="go" data-href="${cfg.newHref}">${esc(cfg.newLabel)}</button>`}</div>`}
+      ${HMS.list.render({
+        key: "rq-" + cfg.portal, rows, defaults: { sort: { key: "requestedOn", dir: -1 } },
+        tabs: [
+          { id: "active", label: "Active", test: (row) => SH.isActive(row.r) },
+          { id: "past", label: "Past", test: (row) => !SH.isActive(row.r) },
+          { id: "all", label: "All", test: () => true },
+        ],
+        cols: [
+          { key: "guests", label: cfg.portal === "student" ? "Guests" : "Request", fmt: SH.col.guests },
+          ...(cfg.types.length > 1 ? [{ key: "type", label: "Type", cls: "wrap-sm", fmt: SH.col.muted }] : []),
+          { key: "from", label: "Arrival", fmt: SH.col.date },
+          { key: "to", label: "Departure", fmt: SH.col.date },
+          { key: "where", label: "Hostel / room", cls: "wrap-sm" },
+          { key: "status", label: "Status", fmt: SH.col.reqStatus },
+        ],
+        rowAttrs: (row) => `data-act="go" data-href="${cfg.detailHref(row.id)}"`,
+        actions: (row) => `<div class="actions"><button data-act="go" data-href="${cfg.detailHref(row.id)}" aria-label="Track">${icon("eye")}</button></div>`,
+        empty: { title: "No requests here", body: `<button class="link" data-act="go" data-href="${cfg.newHref}">${esc(cfg.newLabel)}</button>` },
+      })}
     </section>`;
   }
 
@@ -138,7 +151,6 @@ HMS.requester = (function () {
       const next = { dean: "Associate Dean SA", hcu: "HCU", pending: "the Hall Manager" }[r.status];
       UI.toast(`Submitted. It's with ${next} now; you'll be notified at each step.`);
     },
-    rqTab: (el) => { ui.rq.tab = el.dataset.tab; render(); },
     rqCancel: (el) => {
       const r = S.request(el.dataset.id);
       app.form("Cancel this request?", "", "Cancel request", () => { A.cancelRequest(r.id); UI.toast("Request cancelled"); }, { danger: true, intro: `“${esc(r.title)}”, ${D.fmt(r.from)} – ${D.fmt(r.to)}. ${r.status === "allotted" ? "The rooms are released for others." : "Nobody will act on it after this."}` });
@@ -155,7 +167,6 @@ HMS.requester = (function () {
 
   function register(cfg) { cfgs[cfg.portal] = cfg; }
   Object.assign(app.H, handlers);
-  ui.rq = { tab: "active" };
   ui.draft = null;
 
   return { form, list, detail, register, draftFor, newDraft };

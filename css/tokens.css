@@ -26,6 +26,7 @@
 
   /* Strokes */
   --secondary-cta-border: #b9bbc6; /* card + table outlines, secondary button */
+  --secondary-cta-hover: #eff0f3;   /* table header band, zebra rows, table footer (293:10039) */
   --light-stroke: #e0e1e6;         /* nav pills, dividers */
 
   /* Hostel map room states (Bookings 1 · 238:5393) */

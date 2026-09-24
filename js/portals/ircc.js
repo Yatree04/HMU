@@ -39,8 +39,9 @@
   app.portal({
     id: "ircc",
     defaultPath: "batches",
-    nav: [["batches", "My Batches"], ["new", "New Batch Request"]],
+    nav: [["batches", "My Batches"]],
     title: (r) => (r.path === "new" ? "New Batch Request" : "My Batches"),
+    active: (r) => (r.path === "new" ? "batches" : r.path),
     render(route, ctx) {
       const c = cfg(); R.register(c);
       if (route.path === "new") return R.form(c);

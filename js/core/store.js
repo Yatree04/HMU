@@ -300,7 +300,7 @@ HMS.store = (function () {
       const genders = Object.keys(assignments);
       const out = [];
       const send = (req, hostel) => {
-        req.hostel = hostel; req.status = "pending";
+        req.hostel = hostel; req.status = "pending"; req.kind = req.count > 1 ? "group" : "individual";
         log(req, "HCU Office", "hcu", "routed", `Sent to ${hostelName(hostel)}.${note ? " " + note : ""}`);
         state.updates.unshift({ id: nid("UP"), hostel, type: "request", requestId: req.id, title: req.title + " · " + req.requestedBy, body: `HCU | ${req.count} ${req.count > 1 ? "guests" : "guest"}${req.deanNote ? " · Dean SA: " + req.deanNote : ""}`, from: req.from, to: req.to, state: "open" });
         notify("hm:" + hostel, `HCU sent “${req.title}” (${req.count} guests, ${D.fmt(req.from)} – ${D.fmt(req.to)}).`, "#/hm/requests");

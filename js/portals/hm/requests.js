@@ -15,75 +15,79 @@ HMS.views.requests = (function () {
 
   const open = (r) => r.status === "pending" || r.status === "accepted";
   const TABS = [
-    { id: "all", label: "All", test: open },
-    { id: "student", label: "Student Requests", test: (r) => r.source === "student" && open(r) },
-    { id: "group", label: "Department, IRCC & HCU", test: (r) => r.source !== "student" && open(r) },
-    { id: "allotted", label: "Allotted", test: (r) => r.status === "allotted" },
-    { id: "past", label: "Past Requests", test: (r) => ["completed", "rejected", "cancelled"].includes(r.status) },
-    { id: "forms", label: "Student Forms", forms: true },
+    { id: "todo", label: "To do", test: (row) => open(row.r) },
+    { id: "allotted", label: "Allotted", test: (row) => row.r.status === "allotted" },
+    { id: "past", label: "Past", test: (row) => ["completed", "rejected", "cancelled"].includes(row.r.status) },
+    { id: "all", label: "All", test: () => true },
+  ];
+  const FORM_TABS = [
+    { id: "waiting", label: "Waiting", test: (row) => row.f.status === "submitted" },
+    { id: "decided", label: "Decided", test: (row) => row.f.status !== "submitted" },
   ];
 
-  function card(r) {
-    const group = r.kind === "group";
-    const days = D.days(r.from, r.to) + 1;
-    const f1 = group ? kv("Number of Guests", /^\d+ /.test(r.title) ? esc(r.title) : `${r.count} · ${esc(r.title)}`) : kv("Name", esc(r.requestedBy === "Hall Manager" ? r.title : r.requestedBy));
-    const f5 = group ? kv("Requested by", esc(r.requestedBy)) : kv("Contact Number", esc(phoneMask(r.contact)));
-    const primary = r.status === "pending"
-      ? `<button class="btn btn-primary" data-act="acceptRequest" data-id="${r.id}">${icon("check")} Accept</button>`
-      : r.status === "accepted"
-        ? `<button class="btn btn-primary" data-act="allotFromRequest" data-id="${r.id}">${icon("door")} Allot rooms</button>`
-        : "";
-    return `<article class="req ${group ? "group" : ""}">
-      <div class="req-kind">${esc(SH.typeLabel(r))}${r.source !== "student" && r.type !== "direct" ? " · via HCU" : ""}</div>
-      <span class="status">${SH.badge(r.status, true)}</span>
-      <div class="req-fields">
-        ${f1}${kv("Days", days)}
-        ${kv("From", D.fmt(r.from))}${kv("To", D.fmt(r.to))}
-        ${f5}${kv("Requested on", D.fmt(r.requestedOn))}
-      </div>
-      <div class="row">
-        <button class="btn btn-secondary" data-act="viewRequest" data-id="${r.id}">${icon("eye")} View</button>
-        ${primary}
-      </div>
-    </article>`;
+  function nextAction(r) {
+    if (r.status === "pending") return `<button class="btn btn-primary" data-act="acceptRequest" data-id="${r.id}">${icon("check")} Accept</button>`;
+    if (r.status === "accepted") return `<button class="btn btn-primary" data-act="allotFromRequest" data-id="${r.id}">${icon("door")} Allot</button>`;
+    return "";
   }
 
-  function formsTable(u) {
-    let list = S.forms().filter((f) => f.hostel === "H17" && HMS.formTypes[f.type].to === "hm");
-    if (u.q) { const q = u.q.toLowerCase(); list = list.filter((f) => (S.resident(f.residentId).name + HMS.formTypes[f.type].label).toLowerCase().includes(q)); }
-    list = [...list.filter((f) => f.status === "submitted"), ...list.filter((f) => f.status !== "submitted")];
-    if (!list.length) return `<div class="empty"><strong>No forms</strong>Room retention, vacation, room change and mess forms from residents land here.</div>`;
-    return `<div class="table-wrap"><table class="data"><thead><tr><th>Submitted</th><th>Form</th><th>Resident</th><th>Room</th><th>Details</th><th>Status</th><th></th></tr></thead><tbody>
-      ${list.map((f) => { const r = S.resident(f.residentId); const L = HMS.formTypes[f.type]; return `<tr>
-        <td>${D.fmt(f.submittedOn)}</td><td>${esc(L.label)}</td>
-        <td><button class="link" data-act="go" data-href="#/hm/residents/${r.id}">${esc(r.name)}</button></td><td>${esc(r.room || "—")}</td>
-        <td style="font-weight:400;white-space:normal;max-width:320px">${esc(L.summary(f.data, r))}</td>
-        <td>${SH.formBadge(f.status)}</td>
-        <td>${f.status === "submitted" ? `<div class="actions" style="gap:8px"><button class="btn btn-secondary" data-act="decideFormHm" data-id="${f.id}" data-ok="0">Reject</button><button class="btn btn-primary" data-act="decideFormHm" data-id="${f.id}" data-ok="1">Approve</button></div>` : `<span class="muted" style="font-weight:400">${D.fmt(f.decidedOn)}</span>`}</td></tr>`; }).join("")}
-    </tbody></table></div>`;
+  function requestsList() {
+    const rows = S.hostelRequests("H17").map((r) => ({ ...SH.requestRow(r, true), source: r.source === "student" ? "Student" : r.type === "direct" ? "Hall Manager" : "Via HCU" }));
+    return HMS.list.render({
+      key: "hmRequests", tabs: TABS, rows, defaults: { sort: { key: "from", dir: 1 } },
+      cols: [
+        { key: "guests", label: "Guests", fmt: SH.col.guests },
+        { key: "requestedBy", label: "Requested by", cls: "wrap-sm" },
+        { key: "type", label: "Type", cls: "wrap-sm", fmt: SH.col.muted },
+        { key: "from", label: "Arrival", fmt: SH.col.date },
+        { key: "to", label: "Departure", fmt: SH.col.date },
+        { key: "days", label: "Days" },
+        ...(HMS.list.state("hmRequests").tab === "todo" ? [] : [{ key: "rooms", label: "Room", fmt: (v) => esc(v || "—") }]),
+        { key: "status", label: "Status", fmt: SH.col.staffStatus },
+      ],
+      rowAttrs: (row) => `data-act="viewRequest" data-id="${row.id}"`,
+      actions: (row) => `<div class="actions"><button data-act="viewRequest" data-id="${row.id}" aria-label="View">${icon("eye")}</button>${nextAction(row.r)}</div>`,
+      empty: { title: "Nothing to do", body: "New requests from students, departments and HCU appear here." },
+    });
+  }
+
+  function formsList() {
+    const rows = S.forms().filter((f) => f.hostel === "H17" && HMS.formTypes[f.type].to === "hm").map((f) => {
+      const r = S.resident(f.residentId); const L = HMS.formTypes[f.type];
+      return { id: f.id, f, submittedOn: f.submittedOn, form: L.label, name: r.name, room: r.room || "—", details: L.summary(f.data, r), status: f.status === "submitted" ? "Waiting" : f.status === "approved" ? "Approved" : "Not approved", residentId: r.id };
+    });
+    return HMS.list.render({
+      key: "hmForms", tabs: FORM_TABS, rows, defaults: { sort: { key: "submittedOn", dir: -1 } },
+      cols: [
+        { key: "submittedOn", label: "Submitted", fmt: SH.col.date },
+        { key: "form", label: "Form" },
+        { key: "name", label: "Resident" },
+        { key: "room", label: "Room" },
+        { key: "details", label: "Details", cls: "wrap", fmt: SH.col.muted },
+        { key: "status", label: "Status", fmt: (v, row) => SH.formBadge(row.f.status) },
+      ],
+      rowAttrs: (row) => `data-act="go" data-href="#/hm/residents/${row.residentId}"`,
+      actions: (row) => row.f.status === "submitted" ? `<div class="actions"><button class="btn btn-secondary" data-act="decideFormHm" data-id="${row.id}" data-ok="0">Reject</button><button class="btn btn-primary" data-act="decideFormHm" data-id="${row.id}" data-ok="1">Approve</button></div>` : "",
+      empty: { title: "No forms", body: "Room retention, vacation, room change and mess forms from residents land here." },
+    });
   }
 
   function render(ctx) {
-    const u = ctx.ui.book;
-    const tab = TABS.find((t) => t.id === u.tab) || TABS[0];
-    const all = S.hostelRequests("H17");
-    let list = tab.forms ? [] : all.filter(tab.test);
-    if (u.q) { const q = u.q.toLowerCase(); list = list.filter((r) => (r.title + r.requestedBy + r.comments).toLowerCase().includes(q)); }
-    list.sort((a, b) => (u.sortAsc ? 1 : -1) * a.requestedOn.localeCompare(b.requestedOn));
-    const counts = Object.fromEntries(TABS.map((t) => [t.id, t.forms ? S.forms().filter((f) => f.hostel === "H17" && f.status === "submitted" && HMS.formTypes[f.type].to === "hm").length : all.filter(t.test).length]));
-    return `<section data-figma-node="238:4593">
+    const view = ctx.ui.book.view;
+    const nForms = S.forms().filter((f) => f.hostel === "H17" && f.status === "submitted" && HMS.formTypes[f.type].to === "hm").length;
+    const nTodo = S.hostelRequests("H17").filter(open).length;
+    return `<section data-figma-node="238:4052 / 293:10039">
       <div class="page-head">
         <h1 class="page-title">Requests</h1>
         <div class="toolbar-right">
-          ${u.searchOpen ? `<span class="search">${icon("search")}<input class="input" type="search" placeholder="Search requests" value="${esc(u.q)}" data-on-input="bookQ" autofocus></span>` : `<button class="icon-btn" data-act="toggleBookSearch" aria-label="Search requests">${icon("search")}</button>`}
-          <button class="icon-btn" data-act="toggleBookSort" aria-label="Sort by request date">${icon("sort")}</button>
+          <div class="seg" role="tablist" aria-label="What to show">
+            <button role="tab" aria-pressed="${view !== "forms"}" data-act="bookView" data-v="requests">Guest stays${nTodo ? ` <span class="count-dot">${nTodo}</span>` : ""}</button>
+            <button role="tab" aria-pressed="${view === "forms"}" data-act="bookView" data-v="forms">Student forms${nForms ? ` <span class="count-dot">${nForms}</span>` : ""}</button>
+          </div>
           <button class="btn btn-primary btn-lg" data-act="newGuestBooking">${icon("plus")} Book guests</button>
         </div>
       </div>
-      <div class="tabs" role="tablist">
-        ${TABS.map((t) => `<button class="tab" role="tab" aria-selected="${t.id === tab.id}" data-act="bookTab" data-tab="${t.id}">${t.label} <span class="muted">${counts[t.id]}</span></button>`).join("")}
-      </div>
-      ${tab.forms ? formsTable(u) : list.length ? `<div class="req-grid">${list.map(card).join("")}</div>` : `<div class="empty"><strong>No requests here</strong>${tab.id === "all" ? "New requests from students, departments and HCU will appear here." : "Switch tabs to see other requests."}</div>`}
+      ${view === "forms" ? formsList() : requestsList()}
     </section>`;
   }
 
@@ -151,5 +155,5 @@ HMS.views.requests = (function () {
       </div>`;
   }
 
-  return { render, drawer, bookDialog, TABS };
+  return { render, drawer, bookDialog };
 })();
